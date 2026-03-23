@@ -24,7 +24,13 @@
     "preview:tt": "taro build --type tt --preview",
     "preview:weapp": "taro build --type weapp --preview",
     "tsc": "npx tsc --noEmit --skipLibCheck",
-    "validate": "pnpm exec concurrently --kill-others-on-fail --kill-signal SIGKILL -n lint,tsc -c red,blue \"pnpm lint:build\" \"pnpm tsc\""
+    "validate": "pnpm exec concurrently --kill-others-on-fail --kill-signal SIGKILL -n lint,tsc -c red,blue \"pnpm lint:build\" \"pnpm tsc\"",
+    "cap:init": "npx cap init",
+    "cap:add:android": "npx cap add android",
+    "cap:sync": "npx cap sync",
+    "cap:open:android": "npx cap open android",
+    "android:build": "pnpm build:web && pnpm cap:sync",
+    "android:dev": "pnpm build:web && pnpm cap:sync && pnpm cap:open:android"
   },
   "lint-staged": {
     "src/**/*.{js,jsx,ts,tsx}": [
@@ -38,6 +44,9 @@
   ],
   "dependencies": {
     "@babel/runtime": "^7.24.4",
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/cli": "^8.2.0",
+    "@capacitor/core": "^8.2.0",
     "@tarojs/components": "4.1.9",
     "@tarojs/helper": "4.1.9",
     "@tarojs/plugin-framework-react": "4.1.9",

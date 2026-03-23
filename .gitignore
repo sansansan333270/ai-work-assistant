@@ -8,6 +8,17 @@ dist/
 build/
 dist-*/
 
+# Android
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/.idea/
+android/*.iml
+*.apk
+*.aab
+*.keystore
+
 # Misc
 .DS_Store
 .env

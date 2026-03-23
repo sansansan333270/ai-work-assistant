@@ -95,7 +95,39 @@ pnpm build
 - ✅ H5（Web 应用）
 - ✅ 微信小程序
 - ✅ 抖音小程序
+- ✅ **Android APK（支持鸿蒙系统）** 🆕
 - ✅ 服务端（NestJS）
+
+### 🤖 Android APK 构建说明
+
+本项目支持打包为 Android APK，可以在鸿蒙系统和其他 Android 设备上运行。
+
+#### 快速构建
+
+```bash
+# 方式一：使用构建脚本
+./build-android.sh
+
+# 方式二：手动构建
+pnpm build:web      # 构建 H5 版本
+pnpm cap:sync       # 同步到 Android
+cd android
+./gradlew assembleDebug  # 构建 APK
+```
+
+构建完成后，APK 文件位于：`android/app/build/outputs/apk/debug/app-debug.apk`
+
+#### 详细文档
+
+完整的构建、签名和发布指南请查看：[ANDROID_BUILD.md](./ANDROID_BUILD.md)
+
+#### 主要特性
+
+- 🎯 **鸿蒙系统兼容**：完美支持鸿蒙系统安装运行
+- 🎤 **语音功能**：支持语音输入和播放
+- 🌙 **双主题**：浅色/深色模式切换
+- 📦 **离线支持**：核心功能可离线使用
+- 🔐 **安全加密**：支持应用签名和加固
 
 ## 🎨 设计风格
 
