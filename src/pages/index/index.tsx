@@ -1,15 +1,14 @@
 import { View, Text, ScrollView, Input } from '@tarojs/components'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ChatBubble } from '@/components/ChatBubble'
 import { ThinkingMessage } from '@/components/ThinkingMessage'
-import { VoiceButton } from '@/components/VoiceButton'
 import { Sidebar } from '@/components/Sidebar'
 import { ModelSelector } from '@/components/ModelSelector'
 import { ChatModeSelector } from '@/components/ChatModeSelector'
 import { useThemeStore } from '@/store/theme'
 import { useChatStore } from '@/store/chat'
 import { useModelStore } from '@/store/models'
-import { Menu, Send } from 'lucide-react-taro'
+import { Menu, Send, Mic, Keyboard } from 'lucide-react-taro'
 import { Network } from '@/network'
 import './index.css'
 
@@ -19,8 +18,39 @@ export default function Chat() {
   const { currentModel, chatMode } = useModelStore()
   const [inputText, setInputText] = useState('')
   const [showSidebar, setShowSidebar] = useState(false)
+  const [inputMode, setInputMode] = useState<'text' | 'voice'>('text')
+  const [isRecording, setIsRecording] = useState(false)
+  const recognitionRef = useRef<any>(null)
 
   useEffect(() => {
+    // 初始化语音识别（仅在H5环境）
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).webkitSpeechRecognition || 
+                                (window as any).SpeechRecognition
+      if (SpeechRecognition) {
+        const recognitionInstance = new SpeechRecognition()
+        recognitionInstance.continuous = false
+        recognitionInstance.lang = 'zh-CN'
+        recognitionInstance.interimResults = false
+        
+        recognitionInstance.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript
+          handleVoiceInput(transcript)
+          setIsRecording(false)
+        }
+        
+        recognitionInstance.onerror = () => {
+          setIsRecording(false)
+        }
+        
+        recognitionInstance.onend = () => {
+          setIsRecording(false)
+        }
+        
+        recognitionRef.current = recognitionInstance
+      }
+    }
+    
     // 欢迎消息
     if (messages.length === 0) {
       addMessage({
@@ -79,6 +109,72 @@ export default function Chat() {
 
   const handleVoiceInput = (text: string) => {
     setInputText(text)
+    // 直接发送语音识别的结果
+    if (text.trim()) {
+      addMessage({ type: 'text', content: text, from: 'user' })
+      setInputText('')
+      setLoading(true)
+      
+      // 调用AI接口
+      handleSendVoice(text)
+    }
+  }
+
+  const handleSendVoice = async (text: string) => {
+    try {
+      const response = await Network.request({
+        url: '/api/ai/chat',
+        method: 'POST',
+        data: {
+          message: text,
+          model: currentModel.id,
+          mode: chatMode,
+          context: messages.slice(-10)
+        }
+      })
+
+      if (response.data?.thinking) {
+        setThinking(response.data.thinking)
+      }
+
+      addMessage({
+        type: 'text',
+        content: response.data?.answer || '收到，正在为你处理...',
+        from: 'ai'
+      })
+    } catch (error) {
+      console.error('AI request error:', error)
+      addMessage({
+        type: 'text',
+        content: '抱歉，出现了错误，请稍后重试。',
+        from: 'ai'
+      })
+    } finally {
+      setLoading(false)
+      setThinking('')
+    }
+  }
+
+  const handleVoicePress = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.start()
+        setIsRecording(true)
+      } catch (error) {
+        console.error('Voice recognition error:', error)
+      }
+    }
+  }
+
+  const handleVoiceRelease = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop()
+      } catch (error) {
+        console.error('Voice recognition error:', error)
+      }
+    }
+    setIsRecording(false)
   }
 
   return (
@@ -131,25 +227,66 @@ export default function Chat() {
       </ScrollView>
 
       {/* 底部输入 */}
-      <View className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black border-t dark:border-gray-800 p-4">
+      <View className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black p-4">
         <View className="flex items-center gap-3">
-          <VoiceButton onResult={handleVoiceInput} />
-          <View className="flex-1 bg-gray-100 dark:bg-gray-900 rounded-full px-4 py-2">
-            <Input
-              value={inputText}
-              onInput={(e) => setInputText(e.detail.value)}
-              placeholder={`向${currentModel.name}提问...`}
-              className="w-full bg-transparent text-black dark:text-white text-sm"
-              onConfirm={handleSend}
-              confirmType="send"
-            />
-          </View>
+          {/* 左侧切换按钮 */}
           <View 
-            className="bg-blue-500 rounded-full w-10 h-10 flex items-center justify-center cursor-pointer"
-            onClick={handleSend}
+            className="w-10 h-10 flex items-center justify-center cursor-pointer"
+            onClick={() => setInputMode(inputMode === 'text' ? 'voice' : 'text')}
           >
-            <Send size={18} color="#FFFFFF" />
+            {inputMode === 'text' ? (
+              <Mic size={22} color="#8C8C8C" />
+            ) : (
+              <Keyboard size={22} color="#8C8C8C" />
+            )}
           </View>
+
+          {/* 中间区域 */}
+          {inputMode === 'text' ? (
+            // 文本输入模式
+            <>
+              <View className="flex-1 bg-gray-100 dark:bg-gray-900 rounded-full px-4 py-2">
+                <Input
+                  value={inputText}
+                  onInput={(e) => setInputText(e.detail.value)}
+                  placeholder={`向${currentModel.name}提问...`}
+                  className="w-full bg-transparent text-black dark:text-white text-sm"
+                  onConfirm={handleSend}
+                  confirmType="send"
+                />
+              </View>
+              <View 
+                className="bg-blue-500 rounded-full w-10 h-10 flex items-center justify-center cursor-pointer"
+                onClick={handleSend}
+              >
+                <Send size={18} color="#FFFFFF" />
+              </View>
+            </>
+          ) : (
+            // 语音输入模式
+            <View 
+              className={`
+                flex-1 h-10 flex items-center justify-center rounded-full cursor-pointer
+                ${isRecording 
+                  ? 'bg-red-500' 
+                  : 'bg-gray-100 dark:bg-gray-900'
+                }
+              `}
+              onTouchStart={handleVoicePress}
+              onTouchEnd={handleVoiceRelease}
+              onClick={() => {
+                // H5环境的点击处理
+                if (typeof window !== 'undefined' && !('ontouchstart' in window)) {
+                  handleVoicePress()
+                  setTimeout(() => handleVoiceRelease(), 100)
+                }
+              }}
+            >
+              <Text className={`text-sm ${isRecording ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+                {isRecording ? '松开发送' : '按住说话'}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
     </View>
