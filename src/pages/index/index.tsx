@@ -83,14 +83,17 @@ export default function Chat() {
 
   return (
     <View className={`min-h-screen bg-white dark:bg-black ${theme === 'dark' ? 'dark' : ''}`}>
-      {/* 顶部导航 */}
-      <View className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-black border-b dark:border-gray-800">
+      {/* 顶部导航 - 透明背景 */}
+      <View className="fixed top-0 left-0 right-0 z-50">
         <View className="flex items-center justify-between h-14 px-4">
-          <View onClick={() => setShowSidebar(true)} className="cursor-pointer">
-            <Menu size={24} color="#1F1F1F" />
+          <View 
+            onClick={() => setShowSidebar(true)} 
+            className="w-10 h-10 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center shadow-sm cursor-pointer"
+          >
+            <Menu size={20} color="#1F1F1F" />
           </View>
           <ModelSelector />
-          <View className="w-6" />
+          <View className="w-10" />
         </View>
       </View>
 
@@ -99,12 +102,12 @@ export default function Chat() {
 
       {/* 对话内容 */}
       <ScrollView 
-        className="pt-14 pb-32 px-4"
+        className="pt-16 pb-32 px-4"
         scrollY
         scrollIntoView={messages.length > 0 ? `msg-${messages[messages.length - 1].id}` : ''}
       >
         {/* 对话模式选择器 */}
-        <View className="sticky top-0 bg-white dark:bg-black py-2 z-10">
+        <View className="mb-4">
           <ChatModeSelector />
         </View>
 
