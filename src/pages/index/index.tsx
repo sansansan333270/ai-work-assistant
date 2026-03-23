@@ -23,34 +23,6 @@ export default function Chat() {
   const recognitionRef = useRef<any>(null)
 
   useEffect(() => {
-    // 初始化语音识别（仅在H5环境）
-    if (typeof window !== 'undefined') {
-      const SpeechRecognition = (window as any).webkitSpeechRecognition || 
-                                (window as any).SpeechRecognition
-      if (SpeechRecognition) {
-        const recognitionInstance = new SpeechRecognition()
-        recognitionInstance.continuous = false
-        recognitionInstance.lang = 'zh-CN'
-        recognitionInstance.interimResults = false
-        
-        recognitionInstance.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript
-          handleVoiceInput(transcript)
-          setIsRecording(false)
-        }
-        
-        recognitionInstance.onerror = () => {
-          setIsRecording(false)
-        }
-        
-        recognitionInstance.onend = () => {
-          setIsRecording(false)
-        }
-        
-        recognitionRef.current = recognitionInstance
-      }
-    }
-    
     // 欢迎消息
     if (messages.length === 0) {
       addMessage({
@@ -60,6 +32,77 @@ export default function Chat() {
       })
     }
   }, [])
+
+  useEffect(() => {
+    // 初始化语音识别（仅在H5环境）
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).webkitSpeechRecognition || 
+                                (window as any).SpeechRecognition
+      console.log('SpeechRecognition available:', !!SpeechRecognition)
+      
+      if (SpeechRecognition) {
+        const recognitionInstance = new SpeechRecognition()
+        recognitionInstance.continuous = false
+        recognitionInstance.lang = 'zh-CN'
+        recognitionInstance.interimResults = false
+        
+        recognitionInstance.onresult = (event: any) => {
+          console.log('Speech recognition result:', event.results)
+          const transcript = event.results[0][0].transcript
+          handleVoiceInput(transcript)
+          setIsRecording(false)
+        }
+        
+        recognitionInstance.onerror = (event: any) => {
+          console.error('Speech recognition error:', event.error)
+          setIsRecording(false)
+        }
+        
+        recognitionInstance.onend = () => {
+          console.log('Speech recognition ended')
+          setIsRecording(false)
+        }
+        
+        recognitionInstance.onstart = () => {
+          console.log('Speech recognition started successfully')
+        }
+        
+        recognitionRef.current = recognitionInstance
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    // 为桌面环境添加鼠标事件支持
+    if (typeof window !== 'undefined') {
+      const voiceButton = document.getElementById('voice-button')
+      if (voiceButton) {
+        const handleMouseDown = (e: MouseEvent) => {
+          e.preventDefault()
+          handleVoicePress()
+        }
+        const handleMouseUp = (e: MouseEvent) => {
+          e.preventDefault()
+          handleVoiceRelease()
+        }
+        const handleMouseLeave = () => {
+          if (isRecording) {
+            handleVoiceRelease()
+          }
+        }
+
+        voiceButton.addEventListener('mousedown', handleMouseDown)
+        voiceButton.addEventListener('mouseup', handleMouseUp)
+        voiceButton.addEventListener('mouseleave', handleMouseLeave)
+
+        return () => {
+          voiceButton.removeEventListener('mousedown', handleMouseDown)
+          voiceButton.removeEventListener('mouseup', handleMouseUp)
+          voiceButton.removeEventListener('mouseleave', handleMouseLeave)
+        }
+      }
+    }
+  }, [isRecording])
 
   // 发送消息
   const handleSend = async () => {
@@ -156,20 +199,28 @@ export default function Chat() {
   }
 
   const handleVoicePress = () => {
+    console.log('handleVoicePress called, recognitionRef:', recognitionRef.current)
     if (recognitionRef.current) {
       try {
         recognitionRef.current.start()
         setIsRecording(true)
+        console.log('Voice recognition started')
       } catch (error) {
         console.error('Voice recognition error:', error)
+        setIsRecording(false)
       }
+    } else {
+      console.log('No speech recognition available')
+      setIsRecording(false)
     }
   }
 
   const handleVoiceRelease = () => {
+    console.log('handleVoiceRelease called')
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop()
+        console.log('Voice recognition stopped')
       } catch (error) {
         console.error('Voice recognition error:', error)
       }
@@ -265,6 +316,7 @@ export default function Chat() {
           ) : (
             // 语音输入模式
             <View 
+              id="voice-button"
               className={`
                 flex-1 h-10 flex items-center justify-center rounded-full cursor-pointer
                 ${isRecording 
@@ -272,14 +324,17 @@ export default function Chat() {
                   : 'bg-gray-100 dark:bg-gray-900'
                 }
               `}
-              onTouchStart={handleVoicePress}
-              onTouchEnd={handleVoiceRelease}
-              onClick={() => {
-                // H5环境的点击处理
-                if (typeof window !== 'undefined' && !('ontouchstart' in window)) {
-                  handleVoicePress()
-                  setTimeout(() => handleVoiceRelease(), 100)
-                }
+              onTouchStart={(e) => {
+                e.stopPropagation()
+                handleVoicePress()
+              }}
+              onTouchEnd={(e) => {
+                e.stopPropagation()
+                handleVoiceRelease()
+              }}
+              onTouchCancel={(e) => {
+                e.stopPropagation()
+                handleVoiceRelease()
               }}
             >
               <Text className={`text-sm ${isRecording ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
