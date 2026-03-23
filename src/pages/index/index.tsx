@@ -21,6 +21,13 @@ export default function Chat() {
   const [inputMode, setInputMode] = useState<'text' | 'voice'>('text')
   const [isRecording, setIsRecording] = useState(false)
   const recognitionRef = useRef<any>(null)
+  const isRecordingRef = useRef(false)
+  const voiceButtonRef = useRef<HTMLDivElement | null>(null)
+
+  // 同步isRecording状态到ref
+  useEffect(() => {
+    isRecordingRef.current = isRecording
+  }, [isRecording])
 
   useEffect(() => {
     // 欢迎消息
@@ -74,35 +81,52 @@ export default function Chat() {
 
   useEffect(() => {
     // 为桌面环境添加鼠标事件支持
-    if (typeof window !== 'undefined') {
-      const voiceButton = document.getElementById('voice-button')
-      if (voiceButton) {
-        const handleMouseDown = (e: MouseEvent) => {
-          e.preventDefault()
-          handleVoicePress()
-        }
-        const handleMouseUp = (e: MouseEvent) => {
-          e.preventDefault()
-          handleVoiceRelease()
-        }
-        const handleMouseLeave = () => {
-          if (isRecording) {
+    if (typeof window !== 'undefined' && typeof document !== 'undefined' && inputMode === 'voice') {
+      // 延迟获取元素，确保DOM已经渲染
+      const timer = setTimeout(() => {
+        const voiceButton = document.getElementById('voice-button')
+        console.log('voiceButton element:', voiceButton)
+        
+        if (voiceButton) {
+          voiceButtonRef.current = voiceButton as HTMLDivElement
+          
+          const handleMouseDown = (e: MouseEvent) => {
+            e.preventDefault()
+            console.log('=== mousedown ===')
+            handleVoicePress()
+          }
+          const handleMouseUp = (e: MouseEvent) => {
+            e.preventDefault()
+            console.log('=== mouseup ===')
             handleVoiceRelease()
           }
-        }
+          const handleMouseLeave = () => {
+            console.log('=== mouseleave, isRecording:', isRecordingRef.current)
+            if (isRecordingRef.current) {
+              handleVoiceRelease()
+            }
+          }
 
-        voiceButton.addEventListener('mousedown', handleMouseDown)
-        voiceButton.addEventListener('mouseup', handleMouseUp)
-        voiceButton.addEventListener('mouseleave', handleMouseLeave)
+          voiceButton.addEventListener('mousedown', handleMouseDown)
+          voiceButton.addEventListener('mouseup', handleMouseUp)
+          voiceButton.addEventListener('mouseleave', handleMouseLeave)
+          console.log('Mouse event listeners added')
 
-        return () => {
-          voiceButton.removeEventListener('mousedown', handleMouseDown)
-          voiceButton.removeEventListener('mouseup', handleMouseUp)
-          voiceButton.removeEventListener('mouseleave', handleMouseLeave)
+          // 存储清理函数
+          const cleanup = () => {
+            voiceButton.removeEventListener('mousedown', handleMouseDown)
+            voiceButton.removeEventListener('mouseup', handleMouseUp)
+            voiceButton.removeEventListener('mouseleave', handleMouseLeave)
+          }
+          
+          // 保存cleanup函数以便在组件卸载或模式切换时调用
+          ;(voiceButtonRef.current as any).cleanup = cleanup
         }
-      }
+      }, 100)
+
+      return () => clearTimeout(timer)
     }
-  }, [isRecording])
+  }, [inputMode])
 
   // 发送消息
   const handleSend = async () => {
@@ -318,26 +342,33 @@ export default function Chat() {
             <View 
               id="voice-button"
               className={`
-                flex-1 h-10 flex items-center justify-center rounded-full cursor-pointer
+                flex-1 h-12 flex items-center justify-center rounded-full cursor-pointer select-none
                 ${isRecording 
                   ? 'bg-red-500' 
                   : 'bg-gray-100 dark:bg-gray-900'
                 }
               `}
+              style={{ touchAction: 'none' }}
               onTouchStart={(e) => {
+                e.preventDefault()
                 e.stopPropagation()
+                console.log('=== onTouchStart ===')
                 handleVoicePress()
               }}
               onTouchEnd={(e) => {
+                e.preventDefault()
                 e.stopPropagation()
+                console.log('=== onTouchEnd ===')
                 handleVoiceRelease()
               }}
               onTouchCancel={(e) => {
+                e.preventDefault()
                 e.stopPropagation()
+                console.log('=== onTouchCancel ===')
                 handleVoiceRelease()
               }}
             >
-              <Text className={`text-sm ${isRecording ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+              <Text className={`text-base font-medium ${isRecording ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
                 {isRecording ? '松开发送' : '按住说话'}
               </Text>
             </View>
