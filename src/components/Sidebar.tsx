@@ -1,0 +1,57 @@
+import { View, Text } from '@tarojs/components'
+import { MessageSquare, FileText, Presentation, Image, Database, Brain, Settings, X } from 'lucide-react-taro'
+import Taro from '@tarojs/taro'
+
+interface Props {
+  onClose: () => void
+}
+
+const menuItems = [
+  { icon: MessageSquare, label: '智能对话', path: '/pages/index/index' },
+  { icon: FileText, label: '文档工作台', path: '/pages/document/index' },
+  { icon: Presentation, label: 'PPT工作台', path: '/pages/ppt/index' },
+  { icon: Image, label: '生图工作台', path: '/pages/image/index' },
+  { icon: Database, label: '知识库', path: '/pages/knowledge/index' },
+  { icon: Brain, label: '我的记忆', path: '/pages/memory/index' },
+  { icon: Settings, label: '设置', path: '/pages/settings/index' },
+]
+
+export function Sidebar({ onClose }: Props) {
+  const handleNavigate = (path: string) => {
+    Taro.navigateTo({ url: path })
+    onClose()
+  }
+
+  return (
+    <>
+      {/* 遮罩 */}
+      <View 
+        className="fixed inset-0 bg-black bg-opacity-50 z-50"
+        onClick={onClose}
+      />
+      
+      {/* 侧边栏 */}
+      <View className="fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-black z-50 shadow-xl">
+        <View className="flex items-center justify-between p-4 border-b dark:border-gray-800">
+          <Text className="text-lg font-medium text-black dark:text-white">菜单</Text>
+          <View onClick={onClose}>
+            <X size={24} color="#8C8C8C" />
+          </View>
+        </View>
+        
+        <View className="p-4">
+          {menuItems.map((item, index) => (
+            <View 
+              key={index}
+              className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 cursor-pointer"
+              onClick={() => handleNavigate(item.path)}
+            >
+              <item.icon size={20} color="#8C8C8C" />
+              <Text className="text-black dark:text-white">{item.label}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    </>
+  )
+}

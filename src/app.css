@@ -11,39 +11,45 @@ page {
 :root,
 page,
 root-portal {
-  --background: lab(100% 0 0);
-  --foreground: lab(2.75381% 0 0);
-  --card: lab(100% 0 0);
-  --card-foreground: lab(2.75381% 0 0);
-  --popover: lab(100% 0 0);
-  --popover-foreground: lab(2.75381% 0 0);
-  --primary: lab(7.78201% -0.0000149012 0);
-  --primary-foreground: lab(98.26% 0 0);
-  --secondary: lab(96.52% -0.0000298023 0.0000119209);
-  --secondary-foreground: lab(7.78201% -0.0000149012 0);
-  --muted: lab(96.52% -0.0000298023 0.0000119209);
-  --muted-foreground: lab(48.496% 0 0);
-  --accent: lab(96.52% -0.0000298023 0.0000119209);
-  --accent-foreground: lab(7.78201% -0.0000149012 0);
-  --destructive: lab(48.4493% 77.4328 61.5452);
-  --destructive-foreground: lab(96.4152% 3.22586 1.14673);
-  --border: lab(90.952% 0 -0.0000119209);
-  --input: lab(90.952% 0 -0.0000119209);
-  --ring: lab(66.128% -0.0000298023 0.0000119209);
-  --sidebar: lab(98.26% 0 0);
-  --sidebar-foreground: lab(2.75381% 0 0);
-  --sidebar-primary: lab(7.78201% -0.0000149012 0);
-  --sidebar-primary-foreground: lab(98.26% 0 0);
-  --sidebar-accent: lab(96.52% -0.0000298023 0.0000119209);
-  --sidebar-accent-foreground: lab(7.78201% -0.0000149012 0);
-  --sidebar-border: lab(90.952% 0 -0.0000119209);
-  --sidebar-ring: lab(66.128% -0.0000298023 0.0000119209);
-  --surface: lab(97.68% -0.0000298023 0.0000119209);
+  /* 浅色模式 - 豆包风格 */
+  --background: #FFFFFF;
+  --foreground: #1F1F1F;
+  --card: #FFFFFF;
+  --card-foreground: #1F1F1F;
+  --popover: #FFFFFF;
+  --popover-foreground: #1F1F1F;
+  --primary: #1890FF;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F7F7F8;
+  --secondary-foreground: #1F1F1F;
+  --muted: #F7F7F8;
+  --muted-foreground: #8C8C8C;
+  --accent: #F7F7F8;
+  --accent-foreground: #1F1F1F;
+  --destructive: #FF4D4F;
+  --destructive-foreground: #FFFFFF;
+  --border: #E5E5E5;
+  --input: #E5E5E5;
+  --ring: #1890FF;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #1F1F1F;
+  --sidebar-primary: #1890FF;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F7F7F8;
+  --sidebar-accent-foreground: #1F1F1F;
+  --sidebar-border: #E5E5E5;
+  --sidebar-ring: #1890FF;
+  --surface: #F7F7F8;
+  --surface-foreground: #1F1F1F;
   --code: var(--surface);
-  --code-highlight: lab(95.36% 0 0);
-  --code-number: lab(48.96% 0 0);
-  --selection: lab(2.75381% 0 0);
-  --selection-foreground: lab(100% 0 0);
+  --code-highlight: #E8E8E8;
+  --code-number: #8C8C8C;
+  --selection: #1890FF;
+  --selection-foreground: #FFFFFF;
+  --success: #52C41A;
+  --warning: #FAAD14;
+  --error: #FF4D4F;
+  --info: #1890FF;
   --tw-shadow: 0 0 #0000;
   --tw-shadow-color: initial;
   --tw-shadow-alpha: 100%;
@@ -61,43 +67,55 @@ root-portal {
 }
 
 .dark {
-  --background: lab(2.75381% 0 0);
-  --foreground: lab(98.26% 0 0);
-  --card: lab(7.78201% -0.0000149012 0);
-  --card-foreground: lab(98.26% 0 0);
-  --popover: lab(7.78201% -0.0000149012 0);
-  --popover-foreground: lab(98.26% 0 0);
-  --primary: lab(90.952% 0 -0.0000119209);
-  --primary-foreground: lab(7.78201% -0.0000149012 0);
-  --secondary: lab(15.204% 0 -0.00000596046);
-  --secondary-foreground: lab(98.26% 0 0);
-  --muted: lab(15.204% 0 -0.00000596046);
-  --muted-foreground: lab(66.128% -0.0000298023 0.0000119209);
-  --accent: lab(27.036% 0 0);
-  --accent-foreground: lab(98.26% 0 0);
-  --destructive: lab(63.7053% 60.745 31.3109);
-  --destructive-foreground: lab(49.0747% 69.3434 49.6251);
-  --border: lab(100% 0 0 / 10%);
-  --input: lab(100% 0 0 / 15%);
-  --ring: lab(48.496% 0 0);
-  --sidebar: lab(7.78201% -0.0000149012 0);
-  --sidebar-foreground: lab(98.26% 0 0);
-  --sidebar-primary: lab(36.9089% 35.0961 -85.6872);
-  --sidebar-primary-foreground: lab(98.26% 0 0);
-  --sidebar-accent: lab(15.204% 0 -0.00000596046);
-  --sidebar-accent-foreground: lab(98.26% 0 0);
-  --sidebar-border: lab(100% 0 0 / 10%);
-  --sidebar-ring: lab(34.924% 0 0);
-  --surface: lab(7.22637% -0.0000149012 0);
-  --surface-foreground: lab(66.128% -0.0000298023 0.0000119209);
+  /* 深色模式 - 纯黑主题 */
+  --background: #000000;
+  --foreground: #FFFFFF;
+  --card: #1A1A1A;
+  --card-foreground: #FFFFFF;
+  --popover: #1A1A1A;
+  --popover-foreground: #FFFFFF;
+  --primary: #1890FF;
+  --primary-foreground: #FFFFFF;
+  --secondary: #1A1A1A;
+  --secondary-foreground: #FFFFFF;
+  --muted: #1A1A1A;
+  --muted-foreground: #A0A0A0;
+  --accent: #1A1A1A;
+  --accent-foreground: #FFFFFF;
+  --destructive: #FF4D4F;
+  --destructive-foreground: #FFFFFF;
+  --border: #2A2A2A;
+  --input: #2A2A2A;
+  --ring: #1890FF;
+  --sidebar: #000000;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #1890FF;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #1A1A1A;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #2A2A2A;
+  --sidebar-ring: #1890FF;
+  --surface: #1A1A1A;
+  --surface-foreground: #FFFFFF;
   --code: var(--surface);
-  --code-highlight: lab(15.32% 0 0);
-  --code-number: lab(67.52% -0.0000298023 0);
-  --selection: lab(90.952% 0 -0.0000119209);
-  --selection-foreground: lab(7.78201% -0.0000149012 0);
+  --code-highlight: #2A2A2A;
+  --code-number: #A0A0A0;
+  --selection: #1890FF;
+  --selection-foreground: #FFFFFF;
+  --success: #52C41A;
+  --warning: #FAAD14;
+  --error: #FF4D4F;
+  --info: #1890FF;
 }
 
 @custom-variant dark (&:is(.dark *));
+
+/* 主题切换动画 */
+* {
+  transition: background-color 0.3s ease, 
+              color 0.3s ease,
+              border-color 0.3s ease;
+}
 
 @theme inline {
   --color-sidebar: var(--sidebar);

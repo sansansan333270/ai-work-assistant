@@ -1,1 +1,31 @@
-/* 优先使用 tailwindcss，如无必要请不要使用css */
+/* 主对话页面样式 */
+
+.chat-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-container {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 120px;
+}
+
+.input-area {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--background);
+  border-top: 1px solid var(--border);
+  padding: 16px;
+  z-index: 40;
+}
+
+/* 响应式调整 */
+@media (min-width: 768px) {
+  .chat-container {
+    padding-left: 256px;
+  }
+}
