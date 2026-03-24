@@ -1,5 +1,7 @@
 import { View, Text, Image } from '@tarojs/components'
-import { Download, RefreshCw, Volume2 } from 'lucide-react-taro'
+import { Download, RefreshCw, Volume2, Bookmark } from 'lucide-react-taro'
+import { useState } from 'react'
+import { Network } from '@/network'
 
 interface Message {
   id: string
@@ -15,6 +17,7 @@ interface Props {
 export function ChatBubble({ message }: Props) {
   const isUser = message.from === 'user'
   const isImage = message.type === 'image'
+  const [saving, setSaving] = useState(false)
 
   const handlePlayVoice = () => {
     // TTS播放
@@ -22,6 +25,34 @@ export function ChatBubble({ message }: Props) {
       const utterance = new SpeechSynthesisUtterance(message.content)
       utterance.lang = 'zh-CN'
       speechSynthesis.speak(utterance)
+    }
+  }
+
+  const handleSaveToNote = async () => {
+    if (saving) return
+    
+    setSaving(true)
+    try {
+      // 从消息内容中提取标题（取前20个字符）
+      const title = message.content.substring(0, 20) + (message.content.length > 20 ? '...' : '')
+      
+      await Network.request({
+        url: '/api/notes/from-chat',
+        method: 'POST',
+        data: {
+          title,
+          content: message.content,
+          sourceId: message.id
+        }
+      })
+      
+      // 简单的成功提示
+      alert('已保存到笔记本')
+    } catch (error) {
+      console.error('Failed to save note:', error)
+      alert('保存失败，请重试')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -65,8 +96,11 @@ export function ChatBubble({ message }: Props) {
         </Text>
         {!isUser && (
           <View className="flex items-center gap-2 mt-2">
-            <View onClick={handlePlayVoice}>
+            <View onClick={handlePlayVoice} className="cursor-pointer">
               <Volume2 size={16} color="#8C8C8C" />
+            </View>
+            <View onClick={handleSaveToNote} className="cursor-pointer">
+              <Bookmark size={16} color={saving ? '#3B82F6' : '#8C8C8C'} />
             </View>
           </View>
         )}
