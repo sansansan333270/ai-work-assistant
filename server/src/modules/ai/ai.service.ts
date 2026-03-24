@@ -165,13 +165,14 @@ export class AiService {
     // DeepSeek reasoner 会在 reasoning_content 中返回思考过程
     const thinking = data.choices[0]?.message?.reasoning_content || null
 
-    // 异步提取记忆
+    // 提取用户消息文本
     const lastUserMessage = messages[messages.length - 1]
     const userText = typeof lastUserMessage.content === 'string' 
       ? lastUserMessage.content 
       : (lastUserMessage.content as any[]).find(c => c.type === 'text')?.text || ''
     
-    this.extractMemories(userText, content).catch(err => {
+    // 异步提取记忆 - 使用用户选择的模型
+    this.extractMemories(userText, content, 'deepseek').catch(err => {
       console.error('Memory extraction error:', err)
     })
 
@@ -211,13 +212,14 @@ export class AiService {
     const data = await response.json()
     const content = data.choices[0]?.message?.content || ''
 
-    // 异步提取记忆
+    // 提取用户消息文本
     const lastUserMessage = messages[messages.length - 1]
     const userText = typeof lastUserMessage.content === 'string' 
       ? lastUserMessage.content 
       : (lastUserMessage.content as any[]).find(c => c.type === 'text')?.text || ''
     
-    this.extractMemories(userText, content).catch(err => {
+    // 异步提取记忆 - 使用用户选择的模型
+    this.extractMemories(userText, content, 'kimi').catch(err => {
       console.error('Memory extraction error:', err)
     })
 
@@ -261,13 +263,14 @@ export class AiService {
     // 豆包思考模式会在特定字段返回
     const thinking = data.choices[0]?.message?.reasoning_content || null
 
-    // 异步提取记忆
+    // 提取用户消息文本
     const lastUserMessage = messages[messages.length - 1]
     const userText = typeof lastUserMessage.content === 'string' 
       ? lastUserMessage.content 
       : (lastUserMessage.content as any[]).find(c => c.type === 'text')?.text || ''
     
-    this.extractMemories(userText, content).catch(err => {
+    // 异步提取记忆 - 使用用户选择的模型
+    this.extractMemories(userText, content, 'doubao').catch(err => {
       console.error('Memory extraction error:', err)
     })
 
@@ -575,10 +578,16 @@ export class AiService {
     }
   }
 
-  // 使用 DeepSeek 提取记忆
-  private async extractMemories(userMessage: string, aiResponse: string): Promise<void> {
+  // 使用指定模型提取记忆
+  private async extractMemories(userMessage: string, aiResponse: string, modelKey: string): Promise<void> {
     try {
-      const apiKey = this.getApiKey('deepseek')
+      const config = MODEL_CONFIG[modelKey]
+      if (!config) {
+        console.error(`Unknown model for memory extraction: ${modelKey}`)
+        return
+      }
+      
+      const apiKey = this.getApiKey(modelKey)
       
       const extractPrompt = `分析以下对话，判断是否包含值得长期记忆的用户信息。
 
@@ -609,14 +618,32 @@ export class AiService {
 
 只返回 JSON，不要其他内容。`
 
-      const response = await fetch('https://api.deepseek.com/chat/completions', {
+      // 根据不同模型构建请求
+      let apiUrl: string
+      let modelId: string
+      
+      if (modelKey === 'deepseek') {
+        apiUrl = 'https://api.deepseek.com/chat/completions'
+        modelId = 'deepseek-chat'
+      } else if (modelKey === 'kimi') {
+        apiUrl = 'https://api.moonshot.cn/v1/chat/completions'
+        modelId = 'moonshot-v1-8k'
+      } else if (modelKey === 'doubao') {
+        apiUrl = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
+        modelId = config.modelId // 使用配置的 endpoint ID
+      } else {
+        console.error(`Unsupported model for memory extraction: ${modelKey}`)
+        return
+      }
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: 'deepseek-chat',
+          model: modelId,
           messages: [
             { role: 'system', content: '你是一个信息提取助手，从对话中提取用户的重要信息。' },
             { role: 'user', content: extractPrompt }
