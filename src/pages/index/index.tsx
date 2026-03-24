@@ -438,11 +438,21 @@ export default function Chat() {
       // H5端
       // 检查是否支持语音识别
       if (!recognitionSupportedRef.current) {
-        Taro.showToast({ 
-          title: '浏览器不支持语音识别，请使用Chrome', 
-          icon: 'none',
-          duration: 3000
-        })
+        // 检测是否为移动端
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        if (isMobile) {
+          Taro.showModal({
+            title: '提示',
+            content: '手机浏览器暂不支持语音识别功能，请使用微信小程序体验完整语音功能。',
+            showCancel: false
+          })
+        } else {
+          Taro.showToast({ 
+            title: '浏览器不支持语音识别，请使用Chrome', 
+            icon: 'none',
+            duration: 3000
+          })
+        }
         return
       }
 
@@ -478,11 +488,21 @@ export default function Chat() {
             duration: 3000
           })
         } else {
-          Taro.showToast({ 
-            title: '语音识别启动失败，请重试', 
-            icon: 'none',
-            duration: 2000
-          })
+          // 检测是否为移动端
+          const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+          if (isMobile) {
+            Taro.showModal({
+              title: '提示',
+              content: '手机浏览器暂不支持语音识别功能，请使用微信小程序体验完整语音功能。',
+              showCancel: false
+            })
+          } else {
+            Taro.showToast({ 
+              title: '语音识别启动失败，请重试', 
+              icon: 'none',
+              duration: 2000
+            })
+          }
         }
       }
     }
@@ -772,57 +792,83 @@ export default function Chat() {
             {/* 左侧：模式选择 */}
             <View 
               onClick={() => setShowChatModePanel(true)} 
-              className="flex flex-row items-center gap-1 cursor-pointer active:opacity-60"
+              className="flex flex-row items-center gap-1 cursor-pointer active:opacity-60 flex-shrink-0"
             >
               <Text className="block text-xs text-black dark:text-white">{currentMode.label}</Text>
               <ChevronDown size={12} color={iconColorGray} />
             </View>
             
-            {/* 右侧：工具按钮 */}
-            <View className="flex flex-row items-center gap-3">
-              {/* 技能 */}
-              <View 
-                onClick={() => setShowSkillPanel(true)} 
-                className={`flex flex-row items-center gap-1 px-2 py-1 rounded-full cursor-pointer active:opacity-60 transition-all duration-200 ${activeSkill ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
-              >
-                <Sparkles size={12} color={activeSkill ? '#fff' : iconColorGray} />
-                <Text className={`block text-xs ${activeSkill ? 'text-white' : 'text-black dark:text-white'}`}>
-                  {activeSkill ? activeSkill.name : '技能'}
-                </Text>
-                <ChevronDown size={10} color={activeSkill ? '#fff' : iconColorGray} />
-              </View>
-              
-              {/* 生图 */}
-              <View 
-                onClick={() => setShowImagePanel(true)} 
-                className={`flex flex-row items-center gap-1 px-2 py-1 rounded-full cursor-pointer active:opacity-60 transition-all duration-200 ${currentTool === 'image' ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
-              >
-                <ImageIcon size={12} color={currentTool === 'image' ? '#fff' : iconColorGray} />
-                <Text className={`block text-xs ${currentTool === 'image' ? 'text-white' : 'text-black dark:text-white'}`}>
-                  {currentTool === 'image' ? currentImageSize.label : '生图'}
-                </Text>
-                <ChevronDown size={10} color={currentTool === 'image' ? '#fff' : iconColorGray} />
-              </View>
-              
-              {/* 文档 */}
-              <View 
-                onClick={() => setShowDocPanel(true)} 
-                className={`flex flex-row items-center gap-1 px-2 py-1 rounded-full cursor-pointer active:opacity-60 transition-all duration-200 ${currentTool === 'document' ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
-              >
-                <FileText size={12} color={currentTool === 'document' ? '#fff' : iconColorGray} />
-                <Text className={`block text-xs ${currentTool === 'document' ? 'text-white' : 'text-black dark:text-white'}`}>
-                  {currentTool === 'document' ? currentDocType.label : '文档'}
-                </Text>
-                <ChevronDown size={10} color={currentTool === 'document' ? '#fff' : iconColorGray} />
-              </View>
-              
-              {/* 上传文件（仅对话模式） */}
-              {currentTool === 'chat' && (
-                <View onClick={handleChooseFile} className="p-1 cursor-pointer active:opacity-60">
-                  <Plus size={16} color={iconColorGray} />
+            {/* 右侧：工具按钮 - 横向滚动 */}
+            <ScrollView scrollX className="flex-1 ml-3 whitespace-nowrap" style={{ width: 'auto' }}>
+              <View className="flex flex-row items-center gap-2 inline-flex">
+                {/* 技能 */}
+                <View 
+                  onClick={() => setShowSkillPanel(true)} 
+                  className={`flex flex-row items-center gap-1 px-2 py-1 rounded-full cursor-pointer active:opacity-60 transition-all duration-200 flex-shrink-0 ${activeSkill ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+                >
+                  <Sparkles size={12} color={activeSkill ? '#fff' : iconColorGray} />
+                  <Text className={`block text-xs ${activeSkill ? 'text-white' : 'text-black dark:text-white'}`}>
+                    {activeSkill ? activeSkill.name : '技能'}
+                  </Text>
+                  {activeSkill && (
+                    <View 
+                      onClick={(e) => { e.stopPropagation(); setActiveSkill(null); setCurrentTool('chat') }}
+                      className="ml-1"
+                    >
+                      <X size={12} color="#fff" />
+                    </View>
+                  )}
+                  {!activeSkill && <ChevronDown size={10} color={iconColorGray} />}
                 </View>
-              )}
-            </View>
+                
+                {/* 生图 */}
+                <View 
+                  onClick={() => setShowImagePanel(true)} 
+                  className={`flex flex-row items-center gap-1 px-2 py-1 rounded-full cursor-pointer active:opacity-60 transition-all duration-200 flex-shrink-0 ${currentTool === 'image' ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+                >
+                  <ImageIcon size={12} color={currentTool === 'image' ? '#fff' : iconColorGray} />
+                  <Text className={`block text-xs ${currentTool === 'image' ? 'text-white' : 'text-black dark:text-white'}`}>
+                    {currentTool === 'image' ? currentImageSize.label : '生图'}
+                  </Text>
+                  {currentTool === 'image' && (
+                    <View 
+                      onClick={(e) => { e.stopPropagation(); setCurrentTool('chat') }}
+                      className="ml-1"
+                    >
+                      <X size={12} color="#fff" />
+                    </View>
+                  )}
+                  {currentTool !== 'image' && <ChevronDown size={10} color={iconColorGray} />}
+                </View>
+                
+                {/* 文档 */}
+                <View 
+                  onClick={() => setShowDocPanel(true)} 
+                  className={`flex flex-row items-center gap-1 px-2 py-1 rounded-full cursor-pointer active:opacity-60 transition-all duration-200 flex-shrink-0 ${currentTool === 'document' ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+                >
+                  <FileText size={12} color={currentTool === 'document' ? '#fff' : iconColorGray} />
+                  <Text className={`block text-xs ${currentTool === 'document' ? 'text-white' : 'text-black dark:text-white'}`}>
+                    {currentTool === 'document' ? currentDocType.label : '文档'}
+                  </Text>
+                  {currentTool === 'document' && (
+                    <View 
+                      onClick={(e) => { e.stopPropagation(); setCurrentTool('chat') }}
+                      className="ml-1"
+                    >
+                      <X size={12} color="#fff" />
+                    </View>
+                  )}
+                  {currentTool !== 'document' && <ChevronDown size={10} color={iconColorGray} />}
+                </View>
+                
+                {/* 上传文件（仅对话模式） */}
+                {currentTool === 'chat' && (
+                  <View onClick={handleChooseFile} className="p-1 cursor-pointer active:opacity-60 flex-shrink-0">
+                    <Plus size={16} color={iconColorGray} />
+                  </View>
+                )}
+              </View>
+            </ScrollView>
           </View>
         </View>
         
