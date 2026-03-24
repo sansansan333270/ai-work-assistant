@@ -3,6 +3,7 @@ import { Volume2, VolumeX, Bookmark } from 'lucide-react-taro'
 import { useState, useEffect } from 'react'
 import Taro from '@tarojs/taro'
 import { Network } from '@/network'
+import { useAudioStore } from '@/store/audio'
 import { MarkdownRenderer, cleanMarkdownForSpeech } from './MarkdownRenderer'
 
 interface Message {
@@ -28,41 +29,25 @@ export function ChatBubble({ message }: Props) {
   const isUser = message.from === 'user'
   const isImage = message.type === 'image'
   const [saving, setSaving] = useState(false)
-  const [isSpeaking, setIsSpeaking] = useState(false)
-  const [audioContext, setAudioContext] = useState<any>(null)
+  const [audioUrl, setAudioUrl] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  
+  // 使用全局音频状态
+  const { currentMessageId, isPlaying, playAudio, stopAudio } = useAudioStore()
+  
+  // 当前消息是否正在播放
+  const isCurrentMessage = currentMessageId === message.id
+  const isSpeaking = isCurrentMessage && isPlaying
 
+  // 预加载音频
   useEffect(() => {
-    // 初始化音频上下文
-    if (typeof window !== 'undefined') {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext
-      if (AudioContext) {
-        setAudioContext(new AudioContext())
-      }
+    if (!isUser && !isImage && message.content) {
+      loadAudio()
     }
-    
-    return () => {
-      // 清理
-      if (audioContext) {
-        audioContext.close()
-      }
-    }
-  }, [])
+  }, [message.content])
 
-  const handlePlayVoice = async () => {
-    if (isSpeaking) {
-      setIsSpeaking(false)
-      // 停止音频播放
-      if (audioContext) {
-        audioContext.close()
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext
-        setAudioContext(new AudioContext())
-      }
-      return
-    }
-
+  const loadAudio = async () => {
     try {
-      setIsSpeaking(true)
-      
       // 获取用户选择的音色
       const voiceSetting = typeof window !== 'undefined' 
         ? localStorage.getItem('voiceSetting') || 'default' 
@@ -85,19 +70,61 @@ export function ChatBubble({ message }: Props) {
       const data = response.data as { data?: { audioUrl?: string }; code?: number }
       
       if (data?.data?.audioUrl) {
-        // 播放音频
-        const audio = new Audio(data.data.audioUrl)
-        audio.onended = () => setIsSpeaking(false)
-        audio.onerror = () => setIsSpeaking(false)
-        await audio.play()
+        setAudioUrl(data.data.audioUrl)
+      }
+    } catch (error) {
+      console.error('Load audio error:', error)
+    }
+  }
+
+  const handlePlayVoice = async () => {
+    // 如果正在播放当前消息，则停止
+    if (isSpeaking) {
+      stopAudio()
+      return
+    }
+    
+    // 如果有缓存的音频URL，直接播放
+    if (audioUrl) {
+      playAudio(message.id, audioUrl)
+      return
+    }
+
+    // 否则先加载音频
+    setLoading(true)
+    try {
+      // 获取用户选择的音色
+      const voiceSetting = typeof window !== 'undefined' 
+        ? localStorage.getItem('voiceSetting') || 'default' 
+        : 'default'
+      const speaker = voiceMap[voiceSetting] || voiceMap.default
+      
+      // 清理Markdown格式
+      const cleanText = cleanMarkdownForSpeech(message.content)
+      
+      // 调用扣子TTS接口
+      const response = await Network.request({
+        url: '/api/tts/synthesize',
+        method: 'POST',
+        data: {
+          text: cleanText,
+          speaker,
+        },
+      })
+
+      const data = response.data as { data?: { audioUrl?: string }; code?: number }
+      
+      if (data?.data?.audioUrl) {
+        setAudioUrl(data.data.audioUrl)
+        playAudio(message.id, data.data.audioUrl)
       } else {
-        setIsSpeaking(false)
         Taro.showToast({ title: '语音合成失败', icon: 'none' })
       }
     } catch (error) {
       console.error('TTS error:', error)
-      setIsSpeaking(false)
       Taro.showToast({ title: '语音合成失败', icon: 'none' })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -173,7 +200,7 @@ export function ChatBubble({ message }: Props) {
               <Volume2 size={14} color="#8C8C8C" />
             )}
             <Text className={`text-xs ${isSpeaking ? 'text-blue-500' : 'text-gray-500'}`}>
-              {isSpeaking ? '停止' : '朗读'}
+              {loading ? '加载中...' : isSpeaking ? '停止' : '朗读'}
             </Text>
           </View>
           <View onClick={handleSaveToNote} className="flex items-center gap-1 cursor-pointer">
