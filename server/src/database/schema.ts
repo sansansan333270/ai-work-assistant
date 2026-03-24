@@ -1,13 +1,31 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
 
+// 项目表
+export const projects = sqliteTable('projects', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: text('user_id').notNull().default('default-user'),
+  name: text('name').notNull(), // 项目名称
+  type: text('type').notNull().default('other'), // 类型：novel, article, code, other
+  description: text('description').default(''), // 项目简介
+  settings: text('settings').default('{}'), // JSON: 核心设定（人物、世界观等）
+  outline: text('outline').default('{}'), // JSON: 大纲/目录结构
+  writingStyle: text('writing_style').default('{}'), // JSON: 风格配置（语调、视角、参考样例）
+  currentProgress: text('current_progress').default(''), // 当前进度描述
+  status: text('status').notNull().default('active'), // active, paused, completed
+  sessionCount: integer('session_count').default(0), // 关联会话数量
+  lastActiveAt: integer('last_active_at', { mode: 'timestamp' }), // 最后活跃时间
+  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+})
+
 // 笔记表
 export const notes = sqliteTable('notes', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   userId: text('user_id').notNull().default('default-user'),
   title: text('title').notNull(),
   content: text('content').notNull(),
-  category: text('category').default('default'), // 分类：default, work, study, life
+  category: text('category').default('default'), // 分类：default, work, study, life, creation
   tags: text('tags').default(''), // 标签，逗号分隔
   sourceType: text('source_type').notNull(), // 来源类型：ai-chat, manual, knowledge
   sourceId: text('source_id'), // 来源ID（如对话ID）
@@ -40,9 +58,10 @@ export const knowledgeItems = sqliteTable('knowledge_items', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   userId: text('user_id').notNull().default('default-user'),
   noteId: integer('note_id').references(() => notes.id), // 关联的笔记ID
+  projectId: integer('project_id').references(() => projects.id), // 关联的项目ID
   title: text('title').notNull(),
   content: text('content').notNull(),
-  category: text('category').notNull(), // 分类
+  category: text('category').notNull(), // 分类：character, scene, plot, setting
   tags: text('tags').default(''), // 标签，逗号分隔
   embedding: text('embedding'), // 向量嵌入（JSON数组）
   metadata: text('metadata'), // 元数据（JSON）
@@ -71,6 +90,7 @@ export const skills = sqliteTable('skills', {
 export const sessions = sqliteTable('sessions', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   userId: text('user_id').notNull().default('default-user'),
+  projectId: integer('project_id').references(() => projects.id), // 关联的项目ID
   title: text('title').notNull().default('新对话'), // 会话标题
   messages: text('messages').notNull().default('[]'), // 消息列表（JSON）
   model: text('model').default('doubao'), // 使用的模型
@@ -81,7 +101,21 @@ export const sessions = sqliteTable('sessions', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 })
 
+// 会话摘要表
+export const sessionSummaries = sqliteTable('session_summaries', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: text('user_id').notNull().default('default-user'),
+  sessionId: integer('session_id').references(() => sessions.id), // 关联的会话ID
+  projectId: integer('project_id').references(() => projects.id), // 关联的项目ID
+  summary: text('summary').notNull(), // AI 生成的摘要
+  keyEvents: text('key_events').default('[]'), // JSON: 关键事件
+  wordCount: integer('word_count').default(0), // 本次创作字数
+  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+})
+
 // 导出类型
+export type Project = typeof projects.$inferSelect
+export type NewProject = typeof projects.$inferInsert
 export type Note = typeof notes.$inferSelect
 export type NewNote = typeof notes.$inferInsert
 export type Memory = typeof memories.$inferSelect
@@ -92,3 +126,5 @@ export type Skill = typeof skills.$inferSelect
 export type NewSkill = typeof skills.$inferInsert
 export type Session = typeof sessions.$inferSelect
 export type NewSession = typeof sessions.$inferInsert
+export type SessionSummary = typeof sessionSummaries.$inferSelect
+export type NewSessionSummary = typeof sessionSummaries.$inferInsert

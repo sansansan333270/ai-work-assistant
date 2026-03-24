@@ -7,8 +7,10 @@ export class SessionsController {
 
   // 获取会话列表
   @Get()
-  async getSessionList() {
-    const sessions = await this.sessionsService.getSessionList()
+  async getSessionList(@Query('projectId') projectId?: string) {
+    const sessions = await this.sessionsService.getSessionList({
+      projectId: projectId ? parseInt(projectId) : undefined,
+    })
     return {
       code: 200,
       msg: 'success',
@@ -37,6 +39,7 @@ export class SessionsController {
   // 创建新会话
   @Post()
   async createSession(@Body() body: {
+    projectId?: number
     title?: string
     model?: string
     mode?: string
@@ -56,6 +59,7 @@ export class SessionsController {
     @Param('id') id: string,
     @Body() body: {
       title?: string
+      projectId?: number
       messages?: Message[]
       model?: string
       mode?: string
@@ -86,6 +90,48 @@ export class SessionsController {
     return {
       code: 200,
       msg: 'success',
+    }
+  }
+
+  // 创建会话摘要
+  @Post(':id/summary')
+  async createSummary(
+    @Param('id') id: string,
+    @Body() body: {
+      projectId?: number
+      summary: string
+      keyEvents?: string[]
+      wordCount?: number
+    }
+  ) {
+    const result = await this.sessionsService.createSessionSummary({
+      sessionId: Number(id),
+      projectId: body.projectId,
+      summary: body.summary,
+      keyEvents: body.keyEvents,
+      wordCount: body.wordCount,
+    })
+    return {
+      code: 200,
+      msg: 'success',
+      data: result,
+    }
+  }
+
+  // 获取项目的会话摘要
+  @Get('summaries/:projectId')
+  async getProjectSummaries(
+    @Param('projectId') projectId: string,
+    @Query('limit') limit?: string
+  ) {
+    const summaries = await this.sessionsService.getProjectSummaries(
+      Number(projectId),
+      limit ? parseInt(limit) : 20
+    )
+    return {
+      code: 200,
+      msg: 'success',
+      data: summaries,
     }
   }
 }

@@ -10,9 +10,10 @@ import { UploadModule } from './modules/upload/upload.module'
 import { ImageModule } from './modules/image/image.module'
 import { DocumentModule } from './modules/document/document.module'
 import { SessionsModule } from './modules/sessions/sessions.module'
+import { ProjectsModule } from './modules/projects/projects.module'
 
 @Module({
-  imports: [AiModule, NotesModule, MemoriesModule, SkillsModule, TtsModule, UploadModule, ImageModule, DocumentModule, SessionsModule],
+  imports: [AiModule, NotesModule, MemoriesModule, SkillsModule, TtsModule, UploadModule, ImageModule, DocumentModule, SessionsModule, ProjectsModule],
   controllers: [AppController],
   providers: [AppService],
 })

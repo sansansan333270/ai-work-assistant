@@ -5,7 +5,9 @@ export default defineAppConfig({
     'pages/history/index',
     'pages/knowledge/index',
     'pages/memory/index',
-    'pages/skills/index'
+    'pages/skills/index',
+    'pages/projects/index',
+    'pages/projects/create'
   ],
   window: {
     backgroundTextStyle: 'light',

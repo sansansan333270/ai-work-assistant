@@ -8,7 +8,8 @@ import { useThemeStore } from '@/store/theme'
 import { useChatStore } from '@/store/chat'
 import { useModelStore } from '@/store/models'
 import { useSkillsStore } from '@/store/skills'
-import { Menu, Mic, ChevronDown, Plus, Send, Sparkles, Code, Pen, Zap, ChartBarBig, Image as ImageIcon, FileText, Download, X } from 'lucide-react-taro'
+import { useProjectStore } from '@/store/projects'
+import { Menu, Mic, ChevronDown, Plus, Send, Sparkles, Code, Pen, Zap, ChartBarBig, Image as ImageIcon, FileText, Download, X, FolderOpen } from 'lucide-react-taro'
 import { Network } from '@/network'
 
 // 对话模式
@@ -60,6 +61,7 @@ export default function Chat() {
   const { messages, isLoading, addMessage, setLoading, setMessages, clearMessages } = useChatStore()
   const { currentModel, chatMode, setChatMode } = useModelStore()
   const { skills, fetchSkills } = useSkillsStore()
+  const { currentProject, setCurrentProject, fetchProjects, projects } = useProjectStore()
   const router = useRouter()
   
   // 基础状态
@@ -77,6 +79,7 @@ export default function Chat() {
   const [showSkillPanel, setShowSkillPanel] = useState(false)
   const [showImagePanel, setShowImagePanel] = useState(false)
   const [showDocPanel, setShowDocPanel] = useState(false)
+  const [showProjectPanel, setShowProjectPanel] = useState(false)
   const [activeSkill, setActiveSkill] = useState<{ id: number; name: string; prompt: string } | null>(null)
   
   // 当前功能模式
@@ -102,6 +105,14 @@ export default function Chat() {
     isInitializedRef.current = true
     
     fetchSkills()
+    fetchProjects()
+    
+    // 检查是否有传入的项目ID
+    const projectId = router.params.projectId
+    if (projectId) {
+      // 加载项目
+      loadProject(Number(projectId))
+    }
     
     // 检查是否有传入的会话ID
     const sessionId = router.params.sessionId
@@ -109,7 +120,7 @@ export default function Chat() {
       loadSession(Number(sessionId))
     } else {
       // 创建新会话
-      createNewSession()
+      createNewSession(projectId ? Number(projectId) : undefined)
     }
   }, [router.params])
 
@@ -120,21 +131,47 @@ export default function Chat() {
     }
   }, [messages, currentSessionId])
 
+  // 加载项目
+  const loadProject = async (projectId: number) => {
+    try {
+      const res = await Network.request({ url: `/api/projects/${projectId}` })
+      const project = res.data?.data
+      if (project) {
+        setCurrentProject({
+          ...project,
+          settings: project.settings ? JSON.parse(project.settings) : {},
+          outline: project.outline ? JSON.parse(project.outline) : {},
+          writingStyle: project.writingStyle ? JSON.parse(project.writingStyle) : {},
+        })
+      }
+    } catch (error) {
+      console.error('Failed to load project:', error)
+    }
+  }
+
   // 创建新会话
-  const createNewSession = async () => {
+  const createNewSession = async (projectId?: number) => {
     try {
       const res = await Network.request({
         url: '/api/sessions',
         method: 'POST',
-        data: { model: currentModel.id, mode: chatMode }
+        data: { 
+          model: currentModel.id, 
+          mode: chatMode,
+          projectId: projectId || currentProject?.id || null
+        }
       })
       if (res.data?.data?.id) {
         setCurrentSessionId(res.data.data.id)
         clearMessages()
         // 添加欢迎消息
+        const projectName = currentProject?.name || (projectId ? '' : null)
+        const greeting = projectName 
+          ? `你好！我是${currentModel.name}，正在协助你完成「${projectName}」项目。有什么需要帮助的吗？`
+          : `你好！我是${currentModel.name}，有什么可以帮你的？`
         addMessage({
           type: 'text',
-          content: `你好！我是${currentModel.name}，有什么可以帮你的？`,
+          content: greeting,
           from: 'ai'
         })
       }
@@ -264,6 +301,7 @@ export default function Chat() {
           message: finalMessage,
           model: currentModel.id,
           mode: chatMode,
+          projectId: currentProject?.id,
           context: messages.slice(-10)
         }
       })
@@ -649,6 +687,7 @@ export default function Chat() {
   // 新建对话
   const handleNewChat = () => {
     setShowSidebar(false)
+    setCurrentProject(null)
     createNewSession()
   }
 
@@ -656,6 +695,20 @@ export default function Chat() {
   const handleOpenHistory = () => {
     setShowSidebar(false)
     Taro.navigateTo({ url: '/pages/history/index' })
+  }
+
+  // 选择项目
+  const handleSelectProject = (project: any) => {
+    setCurrentProject(project)
+    setShowProjectPanel(false)
+    createNewSession(project.id)
+  }
+
+  // 清除项目
+  const handleClearProject = () => {
+    setCurrentProject(null)
+    setShowProjectPanel(false)
+    createNewSession()
   }
 
   const currentMode = chatModes.find(m => m.id === chatMode) || chatModes[1]
@@ -677,6 +730,35 @@ export default function Chat() {
           <View onClick={() => setShowSidebar(true)} className="p-2 cursor-pointer active:opacity-60">
             <Menu size={22} color={iconColor} />
           </View>
+          
+          {/* 当前项目显示 */}
+          {currentProject && (
+            <View 
+              onClick={() => setShowProjectPanel(true)}
+              className="flex flex-row items-center gap-1 px-3 py-2 rounded-full bg-blue-100 dark:bg-blue-900 cursor-pointer active:opacity-60"
+            >
+              <FolderOpen size={14} color="#3B82F6" />
+              <Text className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                {currentProject.name}
+              </Text>
+              <ChevronDown size={12} color="#3B82F6" />
+            </View>
+          )}
+          
+          {/* 项目选择按钮（无项目时显示） */}
+          {!currentProject && (
+            <View 
+              onClick={() => setShowProjectPanel(true)}
+              className="flex flex-row items-center gap-1 px-3 py-2 rounded-full bg-gray-100 dark:bg-gray-900 cursor-pointer active:opacity-60"
+            >
+              <FolderOpen size={14} color={iconColorGray} />
+              <Text className="text-xs text-gray-600 dark:text-gray-400">
+                选择项目
+              </Text>
+            </View>
+          )}
+          
+          <View className="w-8" />
         </View>
       </View>
 
@@ -880,7 +962,7 @@ export default function Chat() {
       </View>
 
       {/* 通用面板组件 */}
-      {(showChatModePanel || showSkillPanel || showImagePanel || showDocPanel) && (
+      {(showChatModePanel || showSkillPanel || showImagePanel || showDocPanel || showProjectPanel) && (
         <View 
           className="fixed inset-0 z-40" 
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', animation: 'fadeIn 0.2s ease-out' }}
@@ -889,6 +971,7 @@ export default function Chat() {
             setShowSkillPanel(false)
             setShowImagePanel(false)
             setShowDocPanel(false)
+            setShowProjectPanel(false)
           }}
         />
       )}
@@ -1083,6 +1166,88 @@ export default function Chat() {
                     <View className="flex-1">
                       <Text className={`block text-sm font-medium ${isActive ? 'text-blue-500' : 'text-black dark:text-white'}`}>{skill.name}</Text>
                       <Text className="block text-xs text-gray-500">{skill.description || '暂无描述'}</Text>
+                    </View>
+                    {isActive && (
+                      <View className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                        <Text className="block text-white text-xs">✓</Text>
+                      </View>
+                    )}
+                  </View>
+                )
+              })}
+            </ScrollView>
+          )}
+        </View>
+      )}
+
+      {/* 项目选择面板 */}
+      {showProjectPanel && (
+        <View 
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 p-4 max-h-[70vh]"
+          style={{ animation: 'slideUp 0.3s ease-out' }}
+        >
+          <View className="flex flex-row items-center justify-between mb-4">
+            <Text className="block text-lg font-medium text-black dark:text-white">选择项目</Text>
+            <View className="flex flex-row items-center gap-2">
+              <View 
+                onClick={() => { setShowProjectPanel(false); Taro.navigateTo({ url: '/pages/projects/create' }) }}
+                className="px-3 py-1 rounded-lg bg-blue-500 cursor-pointer active:opacity-60"
+              >
+                <Text className="text-xs text-white">新建</Text>
+              </View>
+              <View onClick={() => setShowProjectPanel(false)} className="p-1 cursor-pointer active:opacity-60">
+                <X size={20} color={iconColorGray} />
+              </View>
+            </View>
+          </View>
+          
+          {/* 无项目选项 */}
+          <View
+            className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:opacity-60 ${!currentProject ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : ''}`}
+            onClick={() => handleClearProject()}
+          >
+            <View className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <X size={16} color={iconColorGray} />
+            </View>
+            <View className="flex-1">
+              <Text className="block text-sm font-medium text-black dark:text-white">普通对话</Text>
+              <Text className="block text-xs text-gray-500">不关联任何项目</Text>
+            </View>
+            {!currentProject && (
+              <View className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                <Text className="block text-white text-xs">✓</Text>
+              </View>
+            )}
+          </View>
+          
+          {projects.length === 0 ? (
+            <View className="flex flex-col items-center py-8">
+              <FolderOpen size={40} color={iconColorGray} />
+              <Text className="block text-gray-500 mt-3">暂无项目</Text>
+              <View 
+                onClick={() => { setShowProjectPanel(false); Taro.navigateTo({ url: '/pages/projects/create' }) }}
+                className="mt-3 px-4 py-2 rounded-lg bg-blue-500 cursor-pointer active:opacity-60"
+              >
+                <Text className="text-sm text-white">创建项目</Text>
+              </View>
+            </View>
+          ) : (
+            <ScrollView scrollY style={{ maxHeight: '50vh' }}>
+              {projects.map((project, index) => {
+                const isActive = currentProject?.id === project.id
+                return (
+                  <View
+                    key={project.id}
+                    className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:opacity-60 ${isActive ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : ''}`}
+                    style={{ animation: `slideUp 0.3s ease-out ${index * 0.03}s both` }}
+                    onClick={() => handleSelectProject(project)}
+                  >
+                    <View className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20 flex items-center justify-center">
+                      <FolderOpen size={16} color="#1890FF" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className={`block text-sm font-medium ${isActive ? 'text-blue-500' : 'text-black dark:text-white'}`}>{project.name}</Text>
+                      <Text className="block text-xs text-gray-500">{project.description || '暂无描述'}</Text>
                     </View>
                     {isActive && (
                       <View className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">

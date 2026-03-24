@@ -13,6 +13,7 @@ export class AiController {
       messageLength: body.message?.length,
       hasFile: !!body.fileKey,
       fileType: body.fileType,
+      projectId: body.projectId,
     })
 
     try {
@@ -20,6 +21,7 @@ export class AiController {
         message: body.message,
         model: body.model,
         mode: body.mode,
+        projectId: body.projectId,
         context: body.context,
         fileKey: body.fileKey,
         fileUrl: body.fileUrl,
@@ -50,6 +52,34 @@ export class AiController {
       return { text: result.text }
     } catch (error) {
       console.error('ASR error:', error)
+      throw error
+    }
+  }
+
+  // 检测是否需要创建项目
+  @Post('detect-project')
+  async detectProject(@Body() body: { message: string }) {
+    console.log('Detect project intent:', { message: body.message.substring(0, 50) })
+
+    try {
+      const result = await this.aiService.detectProjectIntent(body.message)
+      return result
+    } catch (error) {
+      console.error('Detect project error:', error)
+      throw error
+    }
+  }
+
+  // 生成会话摘要
+  @Post('summary')
+  async generateSummary(@Body() body: { messages: Array<{ from: string; content: string }> }) {
+    console.log('Generate summary:', { messageCount: body.messages?.length })
+
+    try {
+      const result = await this.aiService.generateSessionSummary(body.messages)
+      return result
+    } catch (error) {
+      console.error('Summary generation error:', error)
       throw error
     }
   }

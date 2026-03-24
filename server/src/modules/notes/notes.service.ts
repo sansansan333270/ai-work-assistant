@@ -144,6 +144,31 @@ export class NotesService {
     return { total, starred, archived, byCategory }
   }
 
+  // 获取所有标签
+  async getAllTags(userId: string = 'default-user'): Promise<string[]> {
+    const notes = await db
+      .select({ tags: schema.notes.tags })
+      .from(schema.notes)
+      .where(and(
+        eq(schema.notes.userId, userId),
+        eq(schema.notes.isArchived, false)
+      ))
+
+    const tagSet = new Set<string>()
+    notes.forEach(note => {
+      if (note.tags) {
+        note.tags.split(',').forEach(tag => {
+          const trimmedTag = tag.trim()
+          if (trimmedTag) {
+            tagSet.add(trimmedTag)
+          }
+        })
+      }
+    })
+
+    return Array.from(tagSet).sort()
+  }
+
   // 将笔记整理到知识库
   private async addToKnowledgeBase(note: Note): Promise<void> {
     try {

@@ -59,6 +59,12 @@ export class NotesController {
     return this.notesService.getStats()
   }
 
+  // 获取所有标签
+  @Get('tags')
+  async getTags() {
+    return this.notesService.getAllTags()
+  }
+
   // 获取单个笔记
   @Get(':id')
   async getNote(@Param('id') id: string) {
