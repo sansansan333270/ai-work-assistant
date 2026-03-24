@@ -17,6 +17,27 @@ const modes = [
   { id: 'thinking' as const, label: '深度', description: '深度思考' },
 ]
 
+// 声纹动画组件
+function VoiceWaveAnimation({ isRecording }: { isRecording: boolean }) {
+  if (!isRecording) return null
+  
+  return (
+    <View className="flex items-center justify-center gap-1 h-6">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <View
+          key={i}
+          className="w-1 bg-white rounded-full"
+          style={{
+            height: `${12 + Math.random() * 12}px`,
+            animation: `wave 0.5s ease-in-out infinite`,
+            animationDelay: `${i * 0.1}s`
+          }}
+        />
+      ))}
+    </View>
+  )
+}
+
 export default function Chat() {
   const { theme } = useThemeStore()
   const { messages, isLoading, thinking, addMessage, setLoading, setThinking } = useChatStore()
@@ -31,15 +52,13 @@ export default function Chat() {
   
   // 语音输入状态
   const [isRecording, setIsRecording] = useState(false)
-  const [showVoiceHint, setShowVoiceHint] = useState(false)
-  const [voiceHintText, setVoiceHintText] = useState('松开发送，上滑取消')
-  const [isCancellingState, setIsCancelling] = useState(false)
+  const [recordingText, setRecordingText] = useState('')
   
+  // 平台检测
+  const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
+  
+  const recorderManagerRef = useRef<Taro.RecorderManager | null>(null)
   const recognitionRef = useRef<any>(null)
-  const touchStartY = useRef(0)
-  const longPressTimer = useRef<any>(null)
-  const isLongPress = useRef(false)
-  const isCancelling = useRef(false)
   const inputRef = useRef<any>(null)
 
   useEffect(() => {
@@ -52,40 +71,108 @@ export default function Chat() {
     }
   }, [])
 
+  // 初始化录音管理器（小程序端）
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (isWeapp) {
+      const manager = Taro.getRecorderManager()
+      
+      manager.onStart(() => {
+        console.log('录音开始')
+        setIsRecording(true)
+      })
+      
+      manager.onStop((res) => {
+        console.log('录音结束', res.tempFilePath)
+        setIsRecording(false)
+        // 这里可以上传音频文件进行语音识别
+        handleUploadAudio(res.tempFilePath)
+      })
+      
+      manager.onError((err) => {
+        console.error('录音错误', err)
+        setIsRecording(false)
+        Taro.showToast({ title: '录音失败', icon: 'none' })
+      })
+      
+      recorderManagerRef.current = manager
+    }
+  }, [isWeapp])
+
+  // 初始化语音识别（H5端）
+  useEffect(() => {
+    if (!isWeapp && typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).webkitSpeechRecognition || 
                                 (window as any).SpeechRecognition
       
       if (SpeechRecognition) {
         const recognitionInstance = new SpeechRecognition()
-        recognitionInstance.continuous = false
+        recognitionInstance.continuous = true
         recognitionInstance.lang = 'zh-CN'
-        recognitionInstance.interimResults = false
+        recognitionInstance.interimResults = true
         
         recognitionInstance.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript
-          if (!isCancelling.current) {
-            handleVoiceInput(transcript)
+          let interimTranscript = ''
+          let finalTranscript = ''
+          
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript
+            } else {
+              interimTranscript += transcript
+            }
           }
-          setIsRecording(false)
-          setShowVoiceHint(false)
+          
+          if (interimTranscript) {
+            setRecordingText(interimTranscript)
+          }
+          
+          if (finalTranscript) {
+            handleVoiceInput(finalTranscript)
+            setRecordingText('')
+          }
         }
         
-        recognitionInstance.onerror = () => {
+        recognitionInstance.onerror = (err: any) => {
+          console.error('语音识别错误', err)
           setIsRecording(false)
-          setShowVoiceHint(false)
+          setRecordingText('')
         }
         
         recognitionInstance.onend = () => {
           setIsRecording(false)
-          setShowVoiceHint(false)
+          setRecordingText('')
         }
         
         recognitionRef.current = recognitionInstance
       }
     }
-  }, [])
+  }, [isWeapp])
+
+  // 上传音频文件（小程序端）
+  const handleUploadAudio = async (audioPath: string) => {
+    try {
+      Taro.showLoading({ title: '识别中...' })
+      
+      const res = await Network.uploadFile({
+        url: '/api/ai/voice-recognition',
+        filePath: audioPath,
+        name: 'audio'
+      })
+      
+      Taro.hideLoading()
+      
+      // 解析返回数据
+      const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
+      if (data?.text) {
+        handleVoiceInput(data.text)
+      }
+    } catch (error) {
+      Taro.hideLoading()
+      console.error('上传音频失败', error)
+      Taro.showToast({ title: '语音识别失败', icon: 'none' })
+    }
+  }
 
   const handleSend = async () => {
     if (!inputText.trim() || isLoading) return
@@ -182,82 +269,97 @@ export default function Chat() {
     }, 100)
   }
 
-  const handleTouchStart = (e: any) => {
-    const touch = e.touches[0]
-    touchStartY.current = touch.clientY
-    isLongPress.current = false
-    
-    longPressTimer.current = setTimeout(() => {
-      isLongPress.current = true
-      setIsRecording(true)
-      setShowVoiceHint(true)
-      setVoiceHintText('松开发送，上滑取消')
-      
+  // 开始录音
+  const handleStartRecord = () => {
+    if (isWeapp) {
+      recorderManagerRef.current?.start({
+        format: 'mp3',
+        sampleRate: 16000,
+        numberOfChannels: 1
+      })
+    } else {
       if (recognitionRef.current) {
         try {
           recognitionRef.current.start()
+          setIsRecording(true)
         } catch (error) {
-          console.error('Voice recognition error:', error)
+          console.error('启动语音识别失败', error)
+          Taro.showToast({ title: '请使用Chrome浏览器', icon: 'none' })
         }
       }
-    }, 300)
+    }
   }
 
-  const handleTouchMove = (e: any) => {
-    if (!isLongPress.current) {
-      if (longPressTimer.current) {
-        clearTimeout(longPressTimer.current)
-      }
-      return
-    }
-    
-    const touch = e.touches[0]
-    const deltaY = touchStartY.current - touch.clientY
-    
-    if (deltaY > 50) {
-      isCancelling.current = true
-      setIsCancelling(true)
-      setVoiceHintText('松开取消发送')
+  // 停止录音
+  const handleStopRecord = () => {
+    if (isWeapp) {
+      recorderManagerRef.current?.stop()
     } else {
-      isCancelling.current = false
-      setIsCancelling(false)
-      setVoiceHintText('松开发送，上滑取消')
-    }
-  }
-
-  const handleTouchEnd = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current)
-    }
-    
-    if (isRecording) {
       if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop()
-        } catch (error) {
-          console.error('Voice recognition error:', error)
-        }
+        recognitionRef.current.stop()
       }
-      
       setIsRecording(false)
-      setShowVoiceHint(false)
     }
   }
 
-  // 选择文件
-  const handleChooseFile = () => {
-    Taro.chooseMessageFile({
-      count: 1,
-      type: 'file',
-      success: (res) => {
-        const file = res.tempFiles[0]
-        addMessage({ 
-          type: 'text', 
-          content: `已选择文件：${file.name}`, 
-          from: 'user' 
+  // 选择并上传文件
+  const handleChooseFile = async () => {
+    try {
+      // 小程序端使用 chooseMessageFile
+      if (isWeapp) {
+        const res = await Taro.chooseMessageFile({
+          count: 1,
+          type: 'file'
         })
+        const file = res.tempFiles[0]
+        await uploadFile(file.path, file.name)
+      } else {
+        // H5端使用 input file
+        const input = document.createElement('input')
+        input.type = 'file'
+        input.accept = '*/*'
+        input.onchange = async (e: any) => {
+          const file = e.target.files[0]
+          if (file) {
+            addMessage({
+              type: 'text',
+              content: `已选择文件：${file.name}`,
+              from: 'user'
+            })
+          }
+        }
+        input.click()
       }
-    })
+    } catch (error) {
+      console.error('选择文件失败', error)
+    }
+  }
+
+  // 上传文件到服务器
+  const uploadFile = async (filePath: string, fileName: string) => {
+    try {
+      Taro.showLoading({ title: '上传中...' })
+      
+      await Network.uploadFile({
+        url: '/api/upload',
+        filePath: filePath,
+        name: 'file'
+      })
+      
+      Taro.hideLoading()
+      
+      addMessage({
+        type: 'text',
+        content: `已上传文件：${fileName}`,
+        from: 'user'
+      })
+      
+      Taro.showToast({ title: '上传成功', icon: 'success' })
+    } catch (error) {
+      Taro.hideLoading()
+      console.error('上传失败', error)
+      Taro.showToast({ title: '上传失败', icon: 'none' })
+    }
   }
 
   const currentMode = modes.find(m => m.id === chatMode) || modes[1]
@@ -318,25 +420,6 @@ export default function Chat() {
         )}
       </ScrollView>
 
-      {/* 语音输入提示遮罩 */}
-      {showVoiceHint && (
-        <View 
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-        >
-          <View
-            className={`
-              flex flex-col items-center justify-center 
-              w-40 h-40 rounded-full
-              ${isCancellingState ? 'bg-red-500' : 'bg-gray-800'}
-            `}
-          >
-            <Mic size={40} color="#FFFFFF" />
-            <Text className="text-white text-sm mt-3">{voiceHintText}</Text>
-          </View>
-        </View>
-      )}
-
       {/* 模式选择上拉面板 */}
       {showModePanel && (
         <>
@@ -347,9 +430,9 @@ export default function Chat() {
           />
           <View className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 p-4">
             <View className="flex items-center justify-between mb-4">
-              <Text className="text-lg font-medium text-black dark:text-white">选择模式</Text>
+              <Text className="block text-lg font-medium text-black dark:text-white">选择模式</Text>
               <View onClick={() => setShowModePanel(false)} className="p-1 cursor-pointer">
-                <Text className="text-gray-500 text-sm">关闭</Text>
+                <Text className="block text-gray-500 text-sm">关闭</Text>
               </View>
             </View>
             {modes.map((mode) => {
@@ -372,14 +455,14 @@ export default function Chat() {
                   }}
                 >
                   <View className="flex-1">
-                    <Text className={`text-sm font-medium ${isActive ? 'text-blue-500' : 'text-black dark:text-white'}`}>
+                    <Text className={`block text-sm font-medium ${isActive ? 'text-blue-500' : 'text-black dark:text-white'}`}>
                       {mode.label}
                     </Text>
-                    <Text className="text-xs text-gray-500">{mode.description}</Text>
+                    <Text className="block text-xs text-gray-500">{mode.description}</Text>
                   </View>
                   {isActive && (
                     <View className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
-                      <Text className="text-white text-xs">✓</Text>
+                      <Text className="block text-white text-xs">✓</Text>
                     </View>
                   )}
                 </View>
@@ -392,9 +475,9 @@ export default function Chat() {
       {/* 底部输入区域 - 大圆角框 */}
       <View className="fixed bottom-0 left-0 right-0 p-3">
         <View className="bg-gray-100 dark:bg-gray-900 rounded-3xl overflow-hidden">
-          {/* 上方：输入区域 */}
+          {/* 上方：输入区域（放大） */}
           {showTextInput ? (
-            <View className="px-4 py-3">
+            <View className="px-4 py-4">
               <Input
                 ref={inputRef}
                 value={inputText}
@@ -412,47 +495,63 @@ export default function Chat() {
             </View>
           ) : (
             <View 
-              className={`flex items-center justify-center gap-2 px-4 py-3 cursor-pointer ${isRecording ? 'bg-red-500' : ''}`}
-              style={{ touchAction: 'none' }}
+              className={`flex flex-col items-center justify-center gap-2 px-4 py-5 cursor-pointer ${isRecording ? 'bg-blue-500' : ''}`}
               onClick={handleInputClick}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
+              onTouchStart={(e) => {
+                e.preventDefault()
+                handleStartRecord()
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault()
+                handleStopRecord()
+              }}
             >
-              <Mic size={18} color={isRecording ? '#FFFFFF' : iconColorGray} />
-              <Text className={`text-sm ${isRecording ? 'text-white' : 'text-black dark:text-white'}`}>
-                按住说话，轻点输入
-              </Text>
+              {isRecording ? (
+                <>
+                  {/* 声纹动画 */}
+                  <VoiceWaveAnimation isRecording={isRecording} />
+                  <Text className="block text-sm text-white">
+                    {recordingText || '正在聆听...'}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Mic size={22} color={iconColorGray} />
+                  <Text className="block text-sm text-black dark:text-white">
+                    按住说话，轻点输入
+                  </Text>
+                </>
+              )}
             </View>
           )}
           
           {/* 分隔线 */}
           <View className="h-px bg-gray-200 dark:bg-gray-800 mx-4" />
           
-          {/* 下方：功能按钮 */}
-          <View className="flex items-center justify-between px-2 py-2">
+          {/* 下方：功能按钮（缩小） */}
+          <View className="flex items-center justify-between px-3 py-2">
             {/* 左侧：模式选择 */}
             <View 
               onClick={() => setShowModePanel(true)}
-              className="flex items-center gap-1 px-3 py-2 cursor-pointer"
+              className="flex items-center gap-0.5 px-2 py-1 cursor-pointer"
             >
-              <Text className="text-sm text-black dark:text-white">{currentMode.label}</Text>
-              <ChevronDown size={14} color={iconColorGray} />
+              <Text className="block text-xs text-black dark:text-white">{currentMode.label}</Text>
+              <ChevronDown size={12} color={iconColorGray} />
             </View>
             
             {/* 右侧：功能按钮 */}
-            <View className="flex items-center gap-1">
+            <View className="flex items-center gap-0.5">
               {/* @ 按钮 */}
-              <View className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer">
-                <AtSign size={20} color={iconColorGray} />
+              <View className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer">
+                <AtSign size={16} color={iconColorGray} />
               </View>
               
               {/* 加号按钮 - 上传文件 */}
               <View 
                 onClick={handleChooseFile}
-                className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
+                className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer"
               >
-                <Plus size={20} color={iconColorGray} />
+                <Plus size={16} color={iconColorGray} />
               </View>
             </View>
           </View>

@@ -23,6 +23,20 @@
   z-index: 40;
 }
 
+/* 声纹动画 */
+@keyframes wave {
+  0%, 100% {
+    transform: scaleY(0.5);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.voice-wave {
+  animation: wave 0.5s ease-in-out infinite;
+}
+
 /* 响应式调整 */
 @media (min-width: 768px) {
   .chat-container {
