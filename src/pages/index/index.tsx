@@ -8,7 +8,7 @@ import { useThemeStore } from '@/store/theme'
 import { useChatStore } from '@/store/chat'
 import { useModelStore } from '@/store/models'
 import { useSkillsStore } from '@/store/skills'
-import { Menu, Volume2, VolumeX, Mic, ChevronDown, Plus, Send, Sparkles, Code, Pen, Zap, ChartBarBig } from 'lucide-react-taro'
+import { Menu, Mic, ChevronDown, Plus, Send, Sparkles, Code, Pen, Zap, ChartBarBig } from 'lucide-react-taro'
 import { Network } from '@/network'
 
 const modes = [
@@ -29,7 +29,6 @@ export default function Chat() {
   const [showModePanel, setShowModePanel] = useState(false)
   const [showSkillPanel, setShowSkillPanel] = useState(false)
   const [showTextInput, setShowTextInput] = useState(false)
-  const [voiceReplyEnabled, setVoiceReplyEnabled] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [activeSkill, setActiveSkill] = useState<{ id: number; name: string; prompt: string } | null>(null)
   const [isThinking, setIsThinking] = useState(false)
@@ -165,12 +164,6 @@ export default function Chat() {
 
       const aiReply = response.data?.answer || '收到，正在为你处理...'
       addMessage({ type: 'text', content: aiReply, from: 'ai' })
-
-      if (voiceReplyEnabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(aiReply)
-        utterance.lang = 'zh-CN'
-        window.speechSynthesis.speak(utterance)
-      }
     } catch (error) {
       console.error('AI request error:', error)
       addMessage({ type: 'text', content: '抱歉，出现了错误，请稍后重试。', from: 'ai' })
@@ -232,15 +225,6 @@ export default function Chat() {
     }
   }
 
-  // 切换语音回复，同时中断正在朗读的声音
-  const handleToggleVoice = () => {
-    // 中断正在朗读的声音
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel()
-    }
-    setVoiceReplyEnabled(!voiceReplyEnabled)
-  }
-
   const currentMode = modes.find(m => m.id === chatMode) || modes[1]
   const iconColor = theme === 'dark' ? '#FFFFFF' : '#1F1F1F'
   const iconColorGray = theme === 'dark' ? '#666666' : '#8C8C8C'
@@ -249,14 +233,9 @@ export default function Chat() {
     <View className={`min-h-screen bg-white dark:bg-black ${theme === 'dark' ? 'dark' : ''}`}>
       {/* 顶部导航 - 透明背景，无中间文字 */}
       <View className="fixed top-0 left-0 right-0 z-50 bg-transparent">
-        <View className="flex items-center justify-between h-14 px-4">
+        <View className="flex items-center justify-end h-14 px-4">
           <View onClick={() => setShowSidebar(true)} className="p-2 cursor-pointer">
             <Menu size={22} color={iconColor} />
-          </View>
-          <View className="flex items-center gap-1">
-            <View onClick={handleToggleVoice} className="p-2 cursor-pointer">
-              {voiceReplyEnabled ? <Volume2 size={22} color="#1890FF" /> : <VolumeX size={22} color={iconColorGray} />}
-            </View>
           </View>
         </View>
       </View>
