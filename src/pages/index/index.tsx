@@ -258,16 +258,23 @@ export default function Chat() {
 
       {/* 对话内容 */}
       <ScrollView className="pt-16 pb-40 px-4" scrollY scrollIntoView={messages.length > 0 ? `msg-${messages[messages.length - 1].id}` : ''}>
-        {/* 思考过程展示 */}
-        {(isThinking || lastThinking) && (
-          <ThinkingMessage thinking={lastThinking} isThinking={isThinking} />
-        )}
-        
-        {messages.map((msg) => (
-          <View key={msg.id} id={`msg-${msg.id}`}>
-            <ChatBubble message={msg} />
-          </View>
-        ))}
+        {messages.map((msg, index) => {
+          const isLastUserMessage = msg.from === 'user' && index === messages.length - 1
+          const showThinkingAfterThis = isLastUserMessage && (isThinking || lastThinking)
+          
+          return (
+            <View key={msg.id}>
+              <View id={`msg-${msg.id}`}>
+                <ChatBubble message={msg} />
+              </View>
+              
+              {/* 思考过程 - 跟在最后一条用户消息后面 */}
+              {showThinkingAfterThis && (
+                <ThinkingMessage thinking={lastThinking} isThinking={isThinking} />
+              )}
+            </View>
+          )
+        })}
         
         {/* 加载中提示（非深度模式） */}
         {isLoading && !isThinking && (
