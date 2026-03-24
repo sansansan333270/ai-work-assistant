@@ -35,8 +35,15 @@ jobs:
         
       - name: Sync Capacitor
         run: |
-          npx cap add android || true
-          npx cap sync android
+          # 检查 android 目录是否已存在
+          if [ -d "android" ]; then
+            echo "Android 目录已存在，直接同步"
+            npx cap sync android
+          else
+            echo "创建 Android 项目"
+            npx cap add android
+            npx cap sync android
+          fi
           
       - name: Build APK
         run: |

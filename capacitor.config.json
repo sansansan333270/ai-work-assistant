@@ -1,0 +1,6 @@
+{
+  "appId": "com.aiwork.assistant",
+  "appName": "AI工作助手",
+  "webDir": "dist-web",
+  "bundledWebRuntime": false
+}
