@@ -41,6 +41,19 @@ export class AiController {
     }
   }
 
+  @Post('asr')
+  async asr(@Body() body: { audioUrl: string }) {
+    console.log('ASR request:', { audioUrl: body.audioUrl })
+
+    try {
+      const result = await this.aiService.asr(body.audioUrl)
+      return { text: result.text }
+    } catch (error) {
+      console.error('ASR error:', error)
+      throw error
+    }
+  }
+
   @Post('generate-image')
   async generateImage(@Body() body: any) {
     console.log('Image generation request:', {

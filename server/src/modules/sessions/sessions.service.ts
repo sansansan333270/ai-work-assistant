@@ -1,11 +1,7 @@
 import { Injectable } from '@nestjs/common'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import Database from 'better-sqlite3'
+import { db } from '../../database'
 import { sessions } from '../../database/schema'
 import { eq, desc } from 'drizzle-orm'
-
-const sqlite = new Database('data/app.db')
-const db = drizzle(sqlite)
 
 export interface Message {
   id: string

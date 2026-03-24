@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { LLMClient, Config } from 'coze-coding-dev-sdk'
+import { LLMClient, ASRClient, Config } from 'coze-coding-dev-sdk'
 import { UploadService } from '../upload/upload.service'
 
 // 模型配置映射
@@ -37,11 +37,13 @@ interface ChatRequest {
 @Injectable()
 export class AiService {
   private client: LLMClient
+  private asrClient: ASRClient
   private config: Config
 
   constructor(private readonly uploadService: UploadService) {
     this.config = new Config()
     this.client = new LLMClient(this.config)
+    this.asrClient = new ASRClient(this.config)
   }
 
   async chat(request: ChatRequest) {
@@ -173,5 +175,24 @@ export class AiService {
     }
 
     return messages
+  }
+
+  // 语音识别
+  async asr(audioUrl: string): Promise<{ text: string }> {
+    try {
+      const result = await this.asrClient.recognize({
+        uid: 'default-user',
+        url: audioUrl,
+      })
+      
+      console.log('ASR result:', { text: result.text, duration: result.duration })
+      
+      return {
+        text: result.text,
+      }
+    } catch (error) {
+      console.error('ASR error:', error)
+      throw error
+    }
   }
 }

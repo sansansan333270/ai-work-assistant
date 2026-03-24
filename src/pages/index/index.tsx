@@ -95,8 +95,6 @@ export default function Chat() {
   
   const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
   const recorderManagerRef = useRef<Taro.RecorderManager | null>(null)
-  const recognitionRef = useRef<any>(null)
-  const recognitionSupportedRef = useRef(false)
 
   // 初始化或恢复会话
   useEffect(() => {
@@ -208,58 +206,9 @@ export default function Chat() {
     }
   }, [isWeapp])
 
-  // 初始化语音识别（H5）
-  useEffect(() => {
-    if (!isWeapp && typeof window !== 'undefined') {
-      const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition
-      if (SpeechRecognition) {
-        recognitionSupportedRef.current = true
-        const recognition = new SpeechRecognition()
-        recognition.continuous = false
-        recognition.lang = 'zh-CN'
-        recognition.interimResults = true
-        recognition.maxAlternatives = 1
-        
-        recognition.onresult = (e: any) => {
-          const text = e.results[0][0].transcript
-          setInputText(text)
-          if (e.results[0].isFinal) {
-            setIsRecording(false)
-            setShowTextInput(true)
-          }
-        }
-        recognition.onerror = (e: any) => {
-          console.error('Speech recognition error:', e.error, e.message)
-          setIsRecording(false)
-          
-          // 显示具体错误
-          let errorMsg = '语音识别出错'
-          if (e.error === 'not-allowed') {
-            errorMsg = '请允许麦克风权限'
-          } else if (e.error === 'no-speech') {
-            errorMsg = '未检测到语音'
-          } else if (e.error === 'audio-capture') {
-            errorMsg = '无法捕获音频'
-          } else if (e.error === 'network') {
-            errorMsg = '网络错误'
-          } else if (e.error === 'aborted') {
-            errorMsg = '录音被中断'
-          }
-          Taro.showToast({ title: errorMsg, icon: 'none', duration: 2000 })
-        }
-        recognition.onend = () => {
-          console.log('Speech recognition ended')
-          setIsRecording(false)
-        }
-        recognition.onstart = () => {
-          console.log('Speech recognition started')
-        }
-        recognitionRef.current = recognition
-      } else {
-        recognitionSupportedRef.current = false
-      }
-    }
-  }, [isWeapp])
+  // H5端 MediaRecorder 录音
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
 
   const uploadAudio = async (path: string) => {
     try {
@@ -443,10 +392,11 @@ export default function Chat() {
   // 点击麦克风
   const handleMicClick = async () => {
     if (isRecording) {
+      // 停止录音
       if (isWeapp) {
         recorderManagerRef.current?.stop()
       } else {
-        recognitionRef.current?.stop()
+        mediaRecorderRef.current?.stop()
       }
       setIsRecording(false)
       return
@@ -457,33 +407,107 @@ export default function Chat() {
       recorderManagerRef.current?.start({ format: 'mp3', sampleRate: 16000, numberOfChannels: 1 })
       setIsRecording(true)
     } else {
-      // H5端
-      if (!recognitionSupportedRef.current || !recognitionRef.current) {
-        Taro.showToast({ 
-          title: '浏览器不支持语音识别', 
-          icon: 'none',
-          duration: 2000
-        })
-        return
-      }
-
-      // 直接启动语音识别，让浏览器自己处理权限请求
-      // 注意：不要预先调用 getUserMedia，这可能会和 SpeechRecognition 冲突
+      // H5端 - 使用 MediaRecorder 录音
       try {
-        recognitionRef.current.start()
+        // 请求麦克风权限
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            sampleRate: 16000,
+            channelCount: 1,
+          } 
+        })
+        
+        // 创建 MediaRecorder
+        const mediaRecorder = new MediaRecorder(stream, {
+          mimeType: 'audio/webm;codecs=opus',
+        })
+        
+        audioChunksRef.current = []
+        
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            audioChunksRef.current.push(e.data)
+          }
+        }
+        
+        mediaRecorder.onstop = async () => {
+          // 停止所有音轨
+          stream.getTracks().forEach(track => track.stop())
+          
+          // 合并音频数据
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+          
+          // 上传并识别
+          await uploadH5Audio(audioBlob)
+        }
+        
+        mediaRecorder.onerror = (e) => {
+          console.error('MediaRecorder error:', e)
+          stream.getTracks().forEach(track => track.stop())
+          setIsRecording(false)
+          Taro.showToast({ title: '录音出错', icon: 'none' })
+        }
+        
+        mediaRecorderRef.current = mediaRecorder
+        mediaRecorder.start()
         setIsRecording(true)
+        
       } catch (error: any) {
-        console.error('SpeechRecognition start error:', error)
+        console.error('Mic error:', error)
         setIsRecording(false)
         
-        let errorMsg = '语音识别启动失败'
-        if (error.message?.includes('not-allowed') || error.name === 'NotAllowedError') {
-          errorMsg = '请允许麦克风权限'
-        } else if (error.message) {
-          errorMsg = error.message
+        if (error.name === 'NotAllowedError') {
+          Taro.showToast({ title: '请允许麦克风权限', icon: 'none', duration: 2000 })
+        } else if (error.name === 'NotFoundError') {
+          Taro.showToast({ title: '未检测到麦克风', icon: 'none', duration: 2000 })
+        } else {
+          Taro.showToast({ title: '录音启动失败', icon: 'none', duration: 2000 })
         }
-        Taro.showToast({ title: errorMsg, icon: 'none', duration: 2000 })
       }
+    }
+  }
+
+  // H5端上传音频并识别
+  const uploadH5Audio = async (audioBlob: Blob) => {
+    try {
+      Taro.showLoading({ title: '识别中...' })
+      
+      // 先上传音频文件
+      const formData = new FormData()
+      formData.append('file', audioBlob, 'recording.webm')
+      
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+      const uploadData = await uploadRes.json()
+      
+      if (!uploadData?.data?.url) {
+        throw new Error('上传失败')
+      }
+      
+      const audioUrl = uploadData.data.url
+      
+      // 调用 ASR 接口识别
+      const asrRes = await Network.request({
+        url: '/api/ai/asr',
+        method: 'POST',
+        data: { audioUrl }
+      })
+      
+      Taro.hideLoading()
+      
+      const text = asrRes.data?.text
+      if (text) {
+        setInputText(text)
+        setShowTextInput(true)
+      } else {
+        Taro.showToast({ title: '未识别到语音', icon: 'none' })
+      }
+    } catch (error) {
+      Taro.hideLoading()
+      console.error('Audio recognition error:', error)
+      Taro.showToast({ title: '识别失败', icon: 'none' })
     }
   }
 
