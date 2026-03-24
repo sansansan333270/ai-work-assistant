@@ -57,9 +57,9 @@ export default function Settings() {
     }
   }
 
-  // 返回上一页
+  // 返回主页
   const handleBack = () => {
-    Taro.navigateBack()
+    Taro.reLaunch({ url: '/pages/index/index' })
   }
 
   // 切换自动朗读

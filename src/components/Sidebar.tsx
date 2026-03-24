@@ -30,7 +30,9 @@ export function Sidebar({ onClose, onNewChat, onOpenHistory }: Props) {
       return
     }
     
-    Taro.navigateTo({ url: path })
+    // 使用 redirectTo 替换当前页面，避免导航栈累积
+    // 这样返回键可以直接回到主页
+    Taro.redirectTo({ url: path })
   }
 
   const handleNewChat = () => {
@@ -47,7 +49,7 @@ export function Sidebar({ onClose, onNewChat, onOpenHistory }: Props) {
     if (onOpenHistory) {
       onOpenHistory()
     } else {
-      Taro.navigateTo({ url: '/pages/history/index' })
+      Taro.redirectTo({ url: '/pages/history/index' })
     }
   }
 

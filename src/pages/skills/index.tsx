@@ -116,7 +116,7 @@ export default function SkillsPage() {
     <View className={`min-h-screen bg-white dark:bg-black ${theme === 'dark' ? 'dark' : ''}`}>
       {/* 顶部导航 */}
       <View className="flex items-center justify-between h-14 px-4 border-b border-gray-200 dark:border-gray-800">
-        <View onClick={() => Taro.navigateBack()} className="p-1 cursor-pointer active:scale-90 transition-transform duration-150">
+        <View onClick={() => Taro.reLaunch({ url: '/pages/index/index' })} className="p-1 cursor-pointer active:scale-90 transition-transform duration-150">
           <ArrowLeft size={24} color={iconColor} />
         </View>
         <Text className="text-lg font-medium text-black dark:text-white">技能库</Text>

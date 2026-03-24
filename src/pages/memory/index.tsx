@@ -2,7 +2,7 @@ import { View, Text, ScrollView, Input } from '@tarojs/components'
 import { useState, useEffect } from 'react'
 import Taro from '@tarojs/taro'
 import { useThemeStore } from '@/store/theme'
-import { Star, Archive, Trash2, Search, X } from 'lucide-react-taro'
+import { Star, Archive, Trash2, Search, X, LayoutGrid, Briefcase, GraduationCap, House, Sparkles, Folder, Notebook } from 'lucide-react-taro'
 import { Network } from '@/network'
 import './index.css'
 
@@ -18,14 +18,14 @@ interface Note {
   updatedAt: string
 }
 
-// 预设分类
+// 预设分类 - 使用 lucide-react-taro 图标
 const categories = [
-  { id: 'all', name: '全部', icon: '📋' },
-  { id: 'work', name: '工作', icon: '💼' },
-  { id: 'study', name: '学习', icon: '📚' },
-  { id: 'life', name: '生活', icon: '🏠' },
-  { id: 'creation', name: '创作', icon: '✨' },
-  { id: 'default', name: '其他', icon: '📁' },
+  { id: 'all', name: '全部', icon: LayoutGrid },
+  { id: 'work', name: '工作', icon: Briefcase },
+  { id: 'study', name: '学习', icon: GraduationCap },
+  { id: 'life', name: '生活', icon: House },
+  { id: 'creation', name: '创作', icon: Sparkles },
+  { id: 'default', name: '其他', icon: Folder },
 ]
 
 export default function NotebookPage() {
@@ -144,7 +144,8 @@ export default function NotebookPage() {
   }
 
   const getCategoryIcon = (category: string) => {
-    return categories.find(c => c.id === category)?.icon || '📁'
+    const cat = categories.find(c => c.id === category)
+    return cat?.icon || Folder
   }
 
   const iconColorGray = theme === 'dark' ? '#666666' : '#8C8C8C'
@@ -154,11 +155,16 @@ export default function NotebookPage() {
       {/* 标题栏 */}
       <View className="px-4 py-6 border-b border-gray-200 dark:border-gray-800">
         <View className="flex flex-row justify-between items-center">
-          <View>
-            <Text className="text-2xl font-bold text-black dark:text-white block mb-2">📔 笔记本</Text>
-            <Text className="text-sm text-gray-500 dark:text-gray-400 block">
-              保存AI对话中有价值的内容
-            </Text>
+          <View className="flex flex-row items-center gap-3">
+            <View className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
+              <Notebook size={20} color="#22C55E" />
+            </View>
+            <View>
+              <Text className="text-2xl font-bold text-black dark:text-white block">笔记本</Text>
+              <Text className="text-sm text-gray-500 dark:text-gray-400 block">
+                保存AI对话中有价值的内容
+              </Text>
+            </View>
           </View>
           <View 
             onClick={() => setShowSearch(!showSearch)}
@@ -239,21 +245,25 @@ export default function NotebookPage() {
       {/* 分类横向滚动 */}
       <ScrollView scrollX className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
         <View className="flex flex-row gap-2 whitespace-nowrap inline-flex">
-          {categories.map((cat) => (
-            <View
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className={`px-3 py-2 rounded-full cursor-pointer flex-shrink-0 ${
-                activeCategory === cat.id
-                  ? 'bg-gray-800 dark:bg-gray-200'
-                  : 'bg-gray-100 dark:bg-gray-900'
-              }`}
-            >
-              <Text className={`text-sm ${activeCategory === cat.id ? 'text-white dark:text-black' : 'text-gray-600 dark:text-gray-400'}`}>
-                {cat.icon} {cat.name}
-              </Text>
-            </View>
-          ))}
+          {categories.map((cat) => {
+            const IconComponent = cat.icon
+            return (
+              <View
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`flex flex-row items-center gap-2 px-3 py-2 rounded-lg cursor-pointer flex-shrink-0 ${
+                  activeCategory === cat.id
+                    ? 'bg-gray-800 dark:bg-gray-200'
+                    : 'bg-gray-100 dark:bg-gray-900'
+                }`}
+              >
+                <IconComponent size={14} color={activeCategory === cat.id ? (theme === 'dark' ? '#000' : '#fff') : iconColorGray} />
+                <Text className={`text-sm ${activeCategory === cat.id ? 'text-white dark:text-black' : 'text-gray-600 dark:text-gray-400'}`}>
+                  {cat.name}
+                </Text>
+              </View>
+            )
+          })}
         </View>
       </ScrollView>
 
@@ -314,7 +324,12 @@ export default function NotebookPage() {
               >
                 <View className="flex flex-row justify-between items-start mb-2">
                   <View className="flex flex-row items-center gap-2 flex-1">
-                    <Text className="text-sm">{getCategoryIcon(note.category)}</Text>
+                    <View className="w-6 h-6 rounded flex items-center justify-center" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
+                      {(() => {
+                        const IconComponent = getCategoryIcon(note.category)
+                        return <IconComponent size={12} color="#22C55E" />
+                      })()}
+                    </View>
                     <Text className="text-base font-semibold text-black dark:text-white flex-1">
                       {note.title}
                     </Text>

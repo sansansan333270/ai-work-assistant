@@ -36,45 +36,7 @@ const docTypes = [
 
 const iconComponents: Record<string, any> = { Sparkles, Code, Pen, Zap, ChartBarBig }
 
-// 动画样式
-const slideUpAnimation = `
-  @keyframes slideUp {
-    from { transform: translateY(16px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-  }
-  @keyframes slideDown {
-    from { transform: translateY(-16px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  @keyframes fadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
-  }
-  @keyframes scaleIn {
-    from { transform: scale(0.95); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
-  }
-  @keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
-  }
-  @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-  }
-  @keyframes ripple {
-    0% { transform: scale(1); opacity: 0.4; }
-    100% { transform: scale(2.5); opacity: 0; }
-  }
-`
+// 动画样式已移至 app.css 全局定义
 
 export default function Chat() {
   const { theme } = useThemeStore()
@@ -739,11 +701,6 @@ export default function Chat() {
 
   return (
     <View className={`min-h-screen bg-white dark:bg-black ${theme === 'dark' ? 'dark' : ''}`}>
-      {/* 动画样式 */}
-      <View style={{ display: 'none' }}>
-        <Text>{slideUpAnimation}</Text>
-      </View>
-      
       {/* 顶部导航 */}
       <View className="fixed top-0 left-0 right-0 z-50 bg-transparent">
         <View className="flex items-center justify-between h-14 px-4">
@@ -839,8 +796,8 @@ export default function Chat() {
         
         {/* 输入区域 */}
         <View 
-          className={`rounded-3xl mx-3 overflow-hidden transition-all duration-200 ${isRecording ? 'bg-green-500' : 'bg-gray-100 dark:bg-gray-900'}`}
-          style={{ animation: 'slideUp 0.25s ease-out' }}
+          className={`rounded-2xl mx-3 overflow-hidden transition-all duration-200 ${isRecording ? 'bg-green-500' : 'bg-gray-100 dark:bg-gray-900'}`}
+          style={{ animation: 'slideUp 0.3s ease-out' }}
         >
           {/* 上排：输入区域 */}
           <View className="flex flex-row items-center gap-2 px-3 py-3">
@@ -997,8 +954,8 @@ export default function Chat() {
       {/* 对话模式选择面板 */}
       {showChatModePanel && (
         <View 
-          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black rounded-t-2xl z-50 p-4"
-          style={{ animation: 'slideUp 0.25s ease-out' }}
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black rounded-t-xl z-50 p-4"
+          style={{ animation: 'slideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)' }}
         >
           <View className="flex flex-row items-center justify-between mb-3">
             <Text className="block text-base font-medium text-black dark:text-white">选择模式</Text>
@@ -1013,7 +970,7 @@ export default function Chat() {
               <View
                 key={mode.id}
                 className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:scale-98 transition-all duration-150 ${isActive ? 'bg-gray-100 dark:bg-gray-900' : ''} ${isDisabled ? 'opacity-40' : ''}`}
-                style={{ animation: `slideUp 0.25s ease-out ${index * 0.04}s both` }}
+                style={{ animation: `slideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) ${index * 0.05}s both` }}
                 onClick={() => { if (!isDisabled) { setChatMode(mode.id); setShowChatModePanel(false) } }}
               >
                 <View className="flex-1">
@@ -1037,8 +994,8 @@ export default function Chat() {
       {/* 生图分辨率选择面板 */}
       {showImagePanel && (
         <View 
-          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black rounded-t-2xl z-50 p-4"
-          style={{ animation: 'slideUp 0.25s ease-out' }}
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black rounded-t-xl z-50 p-4"
+          style={{ animation: 'slideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)' }}
         >
           <View className="flex flex-row items-center justify-between mb-3">
             <Text className="block text-base font-medium text-black dark:text-white">选择分辨率</Text>
@@ -1052,7 +1009,7 @@ export default function Chat() {
               <View
                 key={size.id}
                 className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:scale-98 transition-all duration-150 ${isActive ? 'bg-gray-100 dark:bg-gray-900' : ''}`}
-                style={{ animation: `slideUp 0.25s ease-out ${index * 0.04}s both` }}
+                style={{ animation: `slideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) ${index * 0.05}s both` }}
                 onClick={() => { 
                   setImageSize(size.id)
                   setCurrentTool('image')
@@ -1078,8 +1035,8 @@ export default function Chat() {
       {/* 文档类型选择面板 */}
       {showDocPanel && (
         <View 
-          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black rounded-t-2xl z-50 p-4"
-          style={{ animation: 'slideUp 0.25s ease-out' }}
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black rounded-t-xl z-50 p-4"
+          style={{ animation: 'slideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)' }}
         >
           <View className="flex flex-row items-center justify-between mb-3">
             <Text className="block text-base font-medium text-black dark:text-white">选择文档类型</Text>
@@ -1093,7 +1050,7 @@ export default function Chat() {
               <View
                 key={type.id}
                 className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:scale-98 transition-all duration-150 ${isActive ? 'bg-gray-100 dark:bg-gray-900' : ''}`}
-                style={{ animation: `slideUp 0.25s ease-out ${index * 0.04}s both` }}
+                style={{ animation: `slideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) ${index * 0.05}s both` }}
                 onClick={() => { 
                   setDocType(type.id)
                   setCurrentTool('document')
@@ -1119,8 +1076,8 @@ export default function Chat() {
       {/* 技能选择面板 */}
       {showSkillPanel && (
         <View 
-          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black rounded-t-2xl z-50 p-4 max-h-[60vh]"
-          style={{ animation: 'slideUp 0.25s ease-out' }}
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black rounded-t-xl z-50 p-4 max-h-[60vh]"
+          style={{ animation: 'slideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)' }}
         >
           <View className="flex flex-row items-center justify-between mb-3">
             <Text className="block text-base font-medium text-black dark:text-white">选择技能</Text>
@@ -1171,7 +1128,7 @@ export default function Chat() {
                   <View
                     key={skill.id}
                     className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:scale-98 transition-all duration-150 ${isActive ? 'bg-gray-100 dark:bg-gray-900' : ''}`}
-                    style={{ animation: `slideUp 0.25s ease-out ${index * 0.03}s both` }}
+                    style={{ animation: `slideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) ${index * 0.05}s both` }}
                     onClick={() => { 
                       setActiveSkill({ id: skill.id, name: skill.name, prompt: skill.prompt })
                       setCurrentTool('chat')
@@ -1202,8 +1159,8 @@ export default function Chat() {
       {/* 项目选择面板 */}
       {showProjectPanel && (
         <View 
-          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black rounded-t-2xl z-50 p-4 max-h-[70vh]"
-          style={{ animation: 'slideUp 0.25s ease-out' }}
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black rounded-t-xl z-50 p-4 max-h-[70vh]"
+          style={{ animation: 'slideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)' }}
         >
           <View className="flex flex-row items-center justify-between mb-3">
             <Text className="block text-base font-medium text-black dark:text-white">选择项目</Text>
@@ -1258,7 +1215,7 @@ export default function Chat() {
                   <View
                     key={project.id}
                     className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:scale-98 transition-all duration-150 ${isActive ? 'bg-gray-100 dark:bg-gray-900' : ''}`}
-                    style={{ animation: `slideUp 0.25s ease-out ${index * 0.03}s both` }}
+                    style={{ animation: `slideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) ${index * 0.05}s both` }}
                     onClick={() => handleSelectProject(project)}
                   >
                     <View className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
