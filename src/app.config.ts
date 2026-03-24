@@ -2,9 +2,6 @@ export default defineAppConfig({
   pages: [
     'pages/index/index',
     'pages/settings/index',
-    'pages/document/index',
-    'pages/ppt/index',
-    'pages/image/index',
     'pages/knowledge/index',
     'pages/memory/index',
     'pages/skills/index'

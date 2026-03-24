@@ -8,7 +8,7 @@ import { useThemeStore } from '@/store/theme'
 import { useChatStore } from '@/store/chat'
 import { useModelStore } from '@/store/models'
 import { useSkillsStore } from '@/store/skills'
-import { Menu, Volume2, VolumeX, FileText, Mic, ChevronDown, Plus, Send, Sparkles, Code, Pen, Zap, ChartBarBig } from 'lucide-react-taro'
+import { Menu, Volume2, VolumeX, Mic, ChevronDown, Plus, Send, Sparkles, Code, Pen, Zap, ChartBarBig } from 'lucide-react-taro'
 import { Network } from '@/network'
 
 const modes = [
@@ -232,9 +232,6 @@ export default function Chat() {
           </View>
           <Text className="text-base font-medium text-black dark:text-white">{currentModel.name}</Text>
           <View className="flex items-center gap-1">
-            <View onClick={() => Taro.navigateTo({ url: '/pages/document/index' })} className="p-2 cursor-pointer">
-              <FileText size={22} color={iconColor} />
-            </View>
             <View onClick={() => setVoiceReplyEnabled(!voiceReplyEnabled)} className="p-2 cursor-pointer">
               {voiceReplyEnabled ? <Volume2 size={22} color="#1890FF" /> : <VolumeX size={22} color={iconColorGray} />}
             </View>
