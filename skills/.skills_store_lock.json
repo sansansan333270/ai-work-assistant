@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "qwen-tts": {
+      "name": "Qwen3-tts",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=qwen-tts",
+      "source": "skillhub",
+      "version": "1.0.0"
+    }
+  }
+}
