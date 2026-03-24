@@ -1,14 +1,28 @@
 import { Injectable } from '@nestjs/common'
 import { eq, and, desc, like, or } from 'drizzle-orm'
+import { EmbeddingClient } from 'coze-coding-dev-sdk'
 import { db, schema } from '@/database'
 import type { NewNote, Note } from '@/database/schema'
 
 @Injectable()
 export class NotesService {
+  private embeddingClient: EmbeddingClient
+
+  constructor() {
+    this.embeddingClient = new EmbeddingClient()
+  }
+
   // 创建笔记
   async createNote(note: NewNote): Promise<Note> {
     const result = await db.insert(schema.notes).values(note).returning()
-    return result[0]
+    const savedNote = result[0]
+    
+    // 异步整理到知识库
+    this.addToKnowledgeBase(savedNote).catch(err => {
+      console.error('Failed to add to knowledge base:', err)
+    })
+    
+    return savedNote
   }
 
   // 获取笔记列表
@@ -128,5 +142,77 @@ export class NotesService {
     })
 
     return { total, starred, archived, byCategory }
+  }
+
+  // 将笔记整理到知识库
+  private async addToKnowledgeBase(note: Note): Promise<void> {
+    try {
+      // 生成向量
+      const textToEmbed = `${note.title}\n${note.content}`
+      const embedding = await this.embeddingClient.embedText(textToEmbed)
+      
+      // 检查是否已存在关联的知识条目
+      const existing = await db
+        .select()
+        .from(schema.knowledgeItems)
+        .where(eq(schema.knowledgeItems.noteId, note.id))
+        .limit(1)
+
+      if (existing.length > 0) {
+        // 更新现有知识条目
+        await db
+          .update(schema.knowledgeItems)
+          .set({
+            title: note.title,
+            content: note.content,
+            category: note.category || 'default',
+            tags: note.tags,
+            embedding: JSON.stringify(embedding),
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.knowledgeItems.id, existing[0].id))
+        
+        console.log(`Updated knowledge item for note ${note.id}`)
+      } else {
+        // 创建新知识条目
+        await db.insert(schema.knowledgeItems).values({
+          userId: note.userId,
+          noteId: note.id,
+          title: note.title,
+          content: note.content,
+          category: note.category || 'default',
+          tags: note.tags,
+          embedding: JSON.stringify(embedding),
+          isPublic: false,
+        })
+        
+        console.log(`Created knowledge item for note ${note.id}`)
+      }
+    } catch (error) {
+      console.error('Failed to add note to knowledge base:', error)
+    }
+  }
+
+  // 手动同步所有笔记到知识库
+  async syncAllToKnowledgeBase(userId: string = 'default-user'): Promise<{ synced: number }> {
+    const notes = await db
+      .select()
+      .from(schema.notes)
+      .where(and(
+        eq(schema.notes.userId, userId),
+        eq(schema.notes.isArchived, false)
+      ))
+
+    let synced = 0
+    for (const note of notes) {
+      try {
+        await this.addToKnowledgeBase(note)
+        synced++
+      } catch (error) {
+        console.error(`Failed to sync note ${note.id}:`, error)
+      }
+    }
+
+    return { synced }
   }
 }
