@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpException, HttpStatus } from '@nestjs/common'
+import { Controller, Post, Body } from '@nestjs/common'
 import { AiService } from './ai.service'
 
 @Controller('ai')
@@ -10,7 +10,9 @@ export class AiController {
     console.log('Chat request:', {
       model: body.model,
       mode: body.mode,
-      messageLength: body.message?.length
+      messageLength: body.message?.length,
+      hasFile: !!body.fileKey,
+      fileType: body.fileType,
     })
 
     try {
@@ -18,17 +20,20 @@ export class AiController {
         message: body.message,
         model: body.model,
         mode: body.mode,
-        context: body.context
+        context: body.context,
+        fileKey: body.fileKey,
+        fileUrl: body.fileUrl,
+        fileType: body.fileType,
       })
 
       console.log('Chat response:', {
         answerLength: result.answer?.length,
-        hasThinking: !!result.thinking
+        hasThinking: !!result.thinking,
       })
 
       return {
         answer: result.answer,
-        thinking: result.thinking
+        thinking: result.thinking,
       }
     } catch (error) {
       console.error('Chat error:', error)
@@ -40,15 +45,11 @@ export class AiController {
   async generateImage(@Body() body: any) {
     console.log('Image generation request:', {
       prompt: body.prompt,
-      size: body.size
+      size: body.size,
     })
 
-    try {
-      const result = await this.aiService.generateImage(body.prompt, body.options)
-      return result
-    } catch (error) {
-      console.error('Image generation error:', error)
-      throw new HttpException('Image generation requires additional API configuration', HttpStatus.NOT_IMPLEMENTED)
+    return {
+      error: 'Image generation requires additional API configuration',
     }
   }
 }

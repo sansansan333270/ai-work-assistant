@@ -201,27 +201,124 @@ export default function Chat() {
     }
   }
 
-  // 选择文件
+  // 上传文件并发送给AI分析
   const handleChooseFile = async () => {
     try {
       if (isWeapp) {
+        // 小程序端
         const res = await Taro.chooseMessageFile({ count: 1, type: 'file' })
         const file = res.tempFiles[0]
-        Taro.showLoading({ title: '上传中...' })
-        await Network.uploadFile({ url: '/api/upload', filePath: file.path, name: 'file' })
-        Taro.hideLoading()
-        addMessage({ type: 'text', content: `已上传：${file.name}`, from: 'user' })
+        await processFile(file.path, file.name, file.type)
       } else {
+        // H5端
         const input = document.createElement('input')
         input.type = 'file'
+        input.accept = 'image/*,.txt,.md,.json,.csv,.pdf,.doc,.docx'
         input.onchange = async (e: any) => {
           const file = e.target.files[0]
-          if (file) addMessage({ type: 'text', content: `已选择：${file.name}`, from: 'user' })
+          if (file) {
+            // 先上传文件到服务器
+            const formData = new FormData()
+            formData.append('file', file)
+            
+            Taro.showLoading({ title: '上传中...' })
+            try {
+              const uploadRes = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+              })
+              const uploadData = await uploadRes.json()
+              Taro.hideLoading()
+              
+              if (uploadData?.data) {
+                const { key, url, mimetype } = uploadData.data
+                await sendFileToAI(file.name, key, url, mimetype)
+              }
+            } catch (error) {
+              Taro.hideLoading()
+              Taro.showToast({ title: '上传失败', icon: 'none' })
+            }
+          }
         }
         input.click()
       }
     } catch (error) {
       Taro.hideLoading()
+      console.error('Choose file error:', error)
+    }
+  }
+
+  // 小程序端处理文件
+  const processFile = async (filePath: string, fileName: string, _fileType: string) => {
+    Taro.showLoading({ title: '上传中...' })
+    try {
+      const res = await Network.uploadFile({
+        url: '/api/upload',
+        filePath,
+        name: 'file',
+      })
+      Taro.hideLoading()
+      
+      const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
+      if (data?.data) {
+        const { key, url, mimetype } = data.data
+        await sendFileToAI(fileName, key, url, mimetype)
+      }
+    } catch (error) {
+      Taro.hideLoading()
+      Taro.showToast({ title: '上传失败', icon: 'none' })
+    }
+  }
+
+  // 发送文件给AI分析
+  const sendFileToAI = async (fileName: string, fileKey: string, fileUrl: string, mimetype: string) => {
+    // 判断文件类型
+    const isImage = mimetype.startsWith('image/')
+    const isText = mimetype.startsWith('text/') || 
+                   fileName.endsWith('.txt') || 
+                   fileName.endsWith('.md') ||
+                   fileName.endsWith('.json') ||
+                   fileName.endsWith('.csv')
+    
+    const fileType = isImage ? 'image' : isText ? 'text' : 'other'
+    
+    // 添加用户消息
+    addMessage({ 
+      type: isImage ? 'image' : 'text', 
+      content: isImage ? fileUrl : `📄 ${fileName}`, 
+      from: 'user' 
+    })
+    
+    setLoading(true)
+    setLastThinking('')
+    
+    try {
+      const response = await Network.request({
+        url: '/api/ai/chat',
+        method: 'POST',
+        data: {
+          message: isImage ? '请分析这张图片，描述图片内容' : `请分析这个文件：${fileName}`,
+          model: currentModel.id,
+          mode: chatMode,
+          context: messages.slice(-10),
+          fileKey,
+          fileUrl,
+          fileType,
+        }
+      })
+
+      if (response.data?.thinking) {
+        setLastThinking(response.data.thinking)
+      }
+
+      const aiReply = response.data?.answer || '分析完成'
+      addMessage({ type: 'text', content: aiReply, from: 'ai' })
+    } catch (error) {
+      console.error('AI file analysis error:', error)
+      addMessage({ type: 'text', content: '文件分析失败，请稍后重试。', from: 'ai' })
+    } finally {
+      setLoading(false)
+      setIsThinking(false)
     }
   }
 
