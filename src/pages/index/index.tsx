@@ -8,7 +8,7 @@ import { useThemeStore } from '@/store/theme'
 import { useChatStore } from '@/store/chat'
 import { useModelStore } from '@/store/models'
 import { useSkillsStore } from '@/store/skills'
-import { Menu, Mic, ChevronDown, Plus, Send, Sparkles, Code, Pen, Zap, ChartBarBig, Image as ImageIcon, FileText, MessageCircle, Download } from 'lucide-react-taro'
+import { Menu, Mic, ChevronDown, Plus, Send, Sparkles, Code, Pen, Zap, ChartBarBig, Image as ImageIcon, FileText, Download, X } from 'lucide-react-taro'
 import { Network } from '@/network'
 
 // 对话模式
@@ -33,14 +33,27 @@ const docTypes = [
   { id: 'free' as const, label: '自由', description: '自由格式文档' },
 ]
 
-// 主模式
-const mainModes = [
-  { id: 'chat', label: '对话', icon: MessageCircle },
-  { id: 'image', label: '生图', icon: ImageIcon },
-  { id: 'document', label: '文档', icon: FileText },
-]
-
 const iconComponents: Record<string, any> = { Sparkles, Code, Pen, Zap, ChartBarBig }
+
+// 动画样式
+const slideUpAnimation = `
+  @keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+`
 
 export default function Chat() {
   const { theme } = useThemeStore()
@@ -54,18 +67,21 @@ export default function Chat() {
   const [showTextInput, setShowTextInput] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   
-  // 模式状态
-  const [currentMainMode, setCurrentMainMode] = useState<'chat' | 'image' | 'document'>('chat')
+  // 面板状态
   const [showChatModePanel, setShowChatModePanel] = useState(false)
   const [showSkillPanel, setShowSkillPanel] = useState(false)
+  const [showImagePanel, setShowImagePanel] = useState(false)
+  const [showDocPanel, setShowDocPanel] = useState(false)
   const [activeSkill, setActiveSkill] = useState<{ id: number; name: string; prompt: string } | null>(null)
+  
+  // 当前功能模式
+  const [currentTool, setCurrentTool] = useState<'chat' | 'image' | 'document'>('chat')
   
   // 生图状态
   const [imageSize, setImageSize] = useState<'1K' | '2K' | '4K'>('1K')
   
   // 文档状态
   const [docType, setDocType] = useState<'report' | 'proposal' | 'summary' | 'free'>('free')
-  const [docDetails, setDocDetails] = useState('')
   const [generatedDoc, setGeneratedDoc] = useState<{ markdown: string; title: string } | null>(null)
   
   // 深度思考
@@ -75,6 +91,7 @@ export default function Chat() {
   const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
   const recorderManagerRef = useRef<Taro.RecorderManager | null>(null)
   const recognitionRef = useRef<any>(null)
+  const recognitionSupportedRef = useRef(false)
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -108,6 +125,7 @@ export default function Chat() {
     if (!isWeapp && typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition
       if (SpeechRecognition) {
+        recognitionSupportedRef.current = true
         const recognition = new SpeechRecognition()
         recognition.continuous = false
         recognition.lang = 'zh-CN'
@@ -120,12 +138,21 @@ export default function Chat() {
             setShowTextInput(true)
           }
         }
-        recognition.onerror = () => {
+        recognition.onerror = (e: any) => {
+          console.error('Speech recognition error:', e.error)
           setIsRecording(false)
-          Taro.showToast({ title: '语音识别失败', icon: 'none' })
+          if (e.error === 'not-allowed') {
+            Taro.showToast({ title: '请允许麦克风权限', icon: 'none', duration: 2000 })
+          } else if (e.error === 'no-speech') {
+            Taro.showToast({ title: '未检测到语音', icon: 'none' })
+          } else {
+            Taro.showToast({ title: '语音识别失败，请重试', icon: 'none' })
+          }
         }
         recognition.onend = () => setIsRecording(false)
         recognitionRef.current = recognition
+      } else {
+        recognitionSupportedRef.current = false
       }
     }
   }, [isWeapp])
@@ -215,7 +242,6 @@ export default function Chat() {
     setInputText('')
     setLoading(true)
     
-    // 添加用户消息
     addMessage({
       type: 'text',
       content: `🎨 生成图片：${prompt}（${imageSize}）`,
@@ -258,7 +284,6 @@ export default function Chat() {
     
     const docConfig = docTypes.find(d => d.id === docType)
     
-    // 添加用户消息
     addMessage({
       type: 'text',
       content: `📄 生成${docConfig?.label || '文档'}：${topic}`,
@@ -269,7 +294,7 @@ export default function Chat() {
       const response = await Network.request({
         url: '/api/document/generate',
         method: 'POST',
-        data: { topic, type: docType, details: docDetails }
+        data: { topic, type: docType, details: '' }
       })
 
       const result = response.data?.data
@@ -325,15 +350,29 @@ export default function Chat() {
         recorderManagerRef.current?.start({ format: 'mp3', sampleRate: 16000, numberOfChannels: 1 })
         setIsRecording(true)
       } else {
+        // H5端检查是否支持语音识别
+        if (!recognitionSupportedRef.current) {
+          Taro.showToast({ 
+            title: '浏览器不支持语音识别，请使用Chrome或Edge', 
+            icon: 'none',
+            duration: 3000
+          })
+          return
+        }
+        
         if (recognitionRef.current) {
           try {
+            // 需要在用户交互后启动
             recognitionRef.current.start()
             setIsRecording(true)
-          } catch {
-            Taro.showToast({ title: '语音识别启动失败', icon: 'none' })
+          } catch (e: any) {
+            console.error('Start recognition error:', e)
+            if (e.message?.includes('already started')) {
+              // 已经在运行，忽略
+            } else {
+              Taro.showToast({ title: '请点击允许麦克风权限', icon: 'none', duration: 2000 })
+            }
           }
-        } else {
-          Taro.showToast({ title: '浏览器不支持语音识别', icon: 'none' })
         }
       }
     }
@@ -457,25 +496,40 @@ export default function Chat() {
 
   // 发送处理
   const handleSend = () => {
-    if (currentMainMode === 'chat') {
-      handleSendChat()
-    } else if (currentMainMode === 'image') {
+    if (currentTool === 'image') {
       handleGenerateImage()
-    } else if (currentMainMode === 'document') {
+    } else if (currentTool === 'document') {
       handleGenerateDocument()
+    } else {
+      handleSendChat()
     }
   }
 
+  // 获取输入框占位符
+  const getPlaceholder = () => {
+    if (currentTool === 'image') return '描述你想生成的图片...'
+    if (currentTool === 'document') return '输入文档主题...'
+    if (activeSkill) return `${activeSkill.name}...`
+    return '输入消息...'
+  }
+
   const currentMode = chatModes.find(m => m.id === chatMode) || chatModes[1]
+  const currentImageSize = imageSizes.find(s => s.id === imageSize) || imageSizes[0]
+  const currentDocType = docTypes.find(d => d.id === docType) || docTypes[3]
   const iconColor = theme === 'dark' ? '#FFFFFF' : '#1F1F1F'
   const iconColorGray = theme === 'dark' ? '#666666' : '#8C8C8C'
 
   return (
     <View className={`min-h-screen bg-white dark:bg-black ${theme === 'dark' ? 'dark' : ''}`}>
-      {/* 顶部导航 */}
+      {/* 动画样式 */}
+      <View style={{ display: 'none' }}>
+        <Text>{slideUpAnimation}</Text>
+      </View>
+      
+      {/* 顶部导航 - 菜单移到左边 */}
       <View className="fixed top-0 left-0 right-0 z-50 bg-transparent">
-        <View className="flex items-center justify-end h-14 px-4">
-          <View onClick={() => setShowSidebar(true)} className="p-2 cursor-pointer">
+        <View className="flex items-center justify-between h-14 px-4">
+          <View onClick={() => setShowSidebar(true)} className="p-2 cursor-pointer active:opacity-60">
             <Menu size={22} color={iconColor} />
           </View>
         </View>
@@ -485,7 +539,7 @@ export default function Chat() {
       {showSidebar && <Sidebar onClose={() => setShowSidebar(false)} />}
 
       {/* 对话内容 */}
-      <ScrollView className="pt-16 pb-48 px-4" scrollY scrollIntoView={messages.length > 0 ? `msg-${messages[messages.length - 1].id}` : ''}>
+      <ScrollView className="pt-16 pb-44 px-4" scrollY scrollIntoView={messages.length > 0 ? `msg-${messages[messages.length - 1].id}` : ''}>
         {messages.map((msg, index) => {
           const isLastUserMessage = msg.from === 'user' && index === messages.length - 1
           const showThinkingAfterThis = isLastUserMessage && (isThinking || lastThinking)
@@ -514,60 +568,50 @@ export default function Chat() {
       {/* 底部输入区域 */}
       <View className="fixed bottom-0 left-0 right-0 z-40">
         {/* 文档下载按钮 */}
-        {currentMainMode === 'document' && generatedDoc && (
-          <View className="px-4 mb-2">
+        {currentTool === 'document' && generatedDoc && (
+          <View 
+            className="px-4 mb-2"
+            style={{ animation: 'slideUp 0.3s ease-out' }}
+          >
             <View 
               onClick={handleDownloadDocument}
-              className="flex flex-row items-center justify-center gap-2 py-2 rounded-xl bg-blue-500 cursor-pointer"
+              className="flex flex-row items-center justify-center gap-2 py-3 rounded-xl bg-blue-500 cursor-pointer active:opacity-80"
+              style={{ animation: 'pulse 2s infinite' }}
             >
-              <Download size={16} color="#FFFFFF" />
-              <Text className="text-white text-sm">下载Word文档</Text>
+              <Download size={18} color="#FFFFFF" />
+              <Text className="text-white text-sm font-medium">下载Word文档</Text>
             </View>
           </View>
         )}
         
-        {/* 主模式切换 */}
-        <View className="flex flex-row items-center justify-center gap-2 px-4 mb-2">
-          {mainModes.map((mode) => {
-            const isActive = currentMainMode === mode.id
-            const ModeIcon = mode.icon
-            return (
-              <View
-                key={mode.id}
-                onClick={() => {
-                  setCurrentMainMode(mode.id as any)
-                  setInputText('')
-                  setShowTextInput(false)
-                  setGeneratedDoc(null)
-                  setDocDetails('')
-                }}
-                className={`flex flex-row items-center gap-1 px-3 py-2 rounded-full cursor-pointer ${isActive ? 'bg-blue-500' : 'bg-gray-100 dark:bg-gray-800'}`}
-              >
-                <ModeIcon size={14} color={isActive ? '#FFFFFF' : iconColorGray} />
-                <Text className={`text-xs ${isActive ? 'text-white' : 'text-black dark:text-white'}`}>{mode.label}</Text>
-              </View>
-            )
-          })}
-        </View>
-        
         {/* 输入区域 */}
-        <View className={`bg-gray-100 dark:bg-gray-900 rounded-3xl mx-3 overflow-hidden ${isRecording ? 'bg-blue-500' : ''}`}>
+        <View 
+          className={`bg-gray-100 dark:bg-gray-900 rounded-3xl mx-3 overflow-hidden transition-all duration-300 ${isRecording ? 'bg-blue-500' : ''}`}
+          style={{ animation: 'slideUp 0.3s ease-out' }}
+        >
           {/* 上排：输入区域 */}
           <View className="flex flex-row items-center gap-2 px-3 py-3">
             {/* 麦克风按钮 */}
-            <View onClick={handleMicClick} className="p-1 cursor-pointer">
+            <View 
+              onClick={handleMicClick} 
+              className={`p-1 cursor-pointer active:opacity-60 transition-transform duration-200 ${isRecording ? 'animate-bounce' : ''}`}
+              style={isRecording ? { animation: 'bounce 0.6s infinite' } : {}}
+            >
               <Mic size={22} color={isRecording ? '#FFFFFF' : iconColorGray} />
             </View>
             
             {/* 输入框/录音提示 */}
             {isRecording ? (
-              <Text className="flex-1 text-white text-sm">正在聆听...</Text>
+              <View className="flex-1 flex flex-row items-center gap-2">
+                <View className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                <Text className="text-white text-sm">正在聆听...</Text>
+              </View>
             ) : showTextInput ? (
               <Input
                 value={inputText}
                 onInput={(e) => setInputText(e.detail.value)}
                 onConfirm={handleSend}
-                placeholder={currentMainMode === 'image' ? '描述你想生成的图片...' : currentMainMode === 'document' ? '输入文档主题...' : '输入消息...'}
+                placeholder={getPlaceholder()}
                 placeholderClass="text-gray-400"
                 className="flex-1 bg-transparent text-sm text-black dark:text-white"
                 confirmType="send"
@@ -575,16 +619,18 @@ export default function Chat() {
                 onBlur={() => { if (!inputText.trim()) setShowTextInput(false) }}
               />
             ) : (
-              <View className="flex-1" onClick={() => setShowTextInput(true)}>
-                <Text className="text-black dark:text-white text-sm">
-                  {currentMainMode === 'image' ? '描述你想生成的图片...' : currentMainMode === 'document' ? '输入文档主题...' : '输入消息...'}
-                </Text>
+              <View className="flex-1 cursor-pointer" onClick={() => setShowTextInput(true)}>
+                <Text className="text-black dark:text-white text-sm">{getPlaceholder()}</Text>
               </View>
             )}
             
             {/* 发送按钮 */}
             {showTextInput && inputText.trim() && (
-              <View onClick={handleSend} className="p-1 cursor-pointer">
+              <View 
+                onClick={handleSend} 
+                className="p-1 cursor-pointer active:opacity-60 transition-transform duration-150"
+                style={{ animation: 'fadeIn 0.2s ease-out' }}
+              >
                 <Send size={22} color="#1890FF" />
               </View>
             )}
@@ -595,68 +641,60 @@ export default function Chat() {
           
           {/* 下排：功能按钮 */}
           <View className="flex flex-row items-center justify-between px-3 py-2">
-            {/* 左侧：模式选项 */}
+            {/* 左侧：模式选择 */}
+            <View 
+              onClick={() => setShowChatModePanel(true)} 
+              className="flex flex-row items-center gap-1 cursor-pointer active:opacity-60"
+            >
+              <Text className="block text-xs text-black dark:text-white">{currentMode.label}</Text>
+              <ChevronDown size={12} color={iconColorGray} />
+            </View>
+            
+            {/* 右侧：工具按钮 */}
             <View className="flex flex-row items-center gap-3">
-              {/* 对话模式：模式选择 + 技能调用 */}
-              {currentMainMode === 'chat' && (
-                <>
-                  <View onClick={() => setShowChatModePanel(true)} className="flex flex-row items-center gap-1 cursor-pointer">
-                    <Text className="block text-xs text-black dark:text-white">{currentMode.label}</Text>
-                    <ChevronDown size={12} color={iconColorGray} />
-                  </View>
-                  
-                  <View 
-                    onClick={() => setShowSkillPanel(true)} 
-                    className={`flex flex-row items-center gap-1 px-2 py-1 rounded-full cursor-pointer ${activeSkill ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
-                  >
-                    <Sparkles size={12} color={activeSkill ? '#fff' : iconColorGray} />
-                    <Text className={`block text-xs ${activeSkill ? 'text-white' : 'text-black dark:text-white'}`}>
-                      {activeSkill ? activeSkill.name : '技能'}
-                    </Text>
-                    <ChevronDown size={10} color={activeSkill ? '#fff' : iconColorGray} />
-                  </View>
-                </>
-              )}
+              {/* 技能 */}
+              <View 
+                onClick={() => setShowSkillPanel(true)} 
+                className={`flex flex-row items-center gap-1 px-2 py-1 rounded-full cursor-pointer active:opacity-60 transition-all duration-200 ${activeSkill ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+              >
+                <Sparkles size={12} color={activeSkill ? '#fff' : iconColorGray} />
+                <Text className={`block text-xs ${activeSkill ? 'text-white' : 'text-black dark:text-white'}`}>
+                  {activeSkill ? activeSkill.name : '技能'}
+                </Text>
+                <ChevronDown size={10} color={activeSkill ? '#fff' : iconColorGray} />
+              </View>
               
-              {/* 生图模式：分辨率选择 */}
-              {currentMainMode === 'image' && (
-                <View className="flex flex-row items-center gap-2">
-                  {imageSizes.map((size) => (
-                    <View
-                      key={size.id}
-                      onClick={() => setImageSize(size.id)}
-                      className={`px-2 py-1 rounded-full cursor-pointer ${imageSize === size.id ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
-                    >
-                      <Text className={`block text-xs ${imageSize === size.id ? 'text-white' : 'text-black dark:text-white'}`}>{size.label}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
+              {/* 生图 */}
+              <View 
+                onClick={() => setShowImagePanel(true)} 
+                className={`flex flex-row items-center gap-1 px-2 py-1 rounded-full cursor-pointer active:opacity-60 transition-all duration-200 ${currentTool === 'image' ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+              >
+                <ImageIcon size={12} color={currentTool === 'image' ? '#fff' : iconColorGray} />
+                <Text className={`block text-xs ${currentTool === 'image' ? 'text-white' : 'text-black dark:text-white'}`}>
+                  {currentTool === 'image' ? currentImageSize.label : '生图'}
+                </Text>
+                <ChevronDown size={10} color={currentTool === 'image' ? '#fff' : iconColorGray} />
+              </View>
               
-              {/* 文档模式：类型选择 */}
-              {currentMainMode === 'document' && (
-                <View className="flex flex-row items-center gap-2">
-                  {docTypes.map((type) => (
-                    <View
-                      key={type.id}
-                      onClick={() => setDocType(type.id)}
-                      className={`px-2 py-1 rounded-full cursor-pointer ${docType === type.id ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
-                    >
-                      <Text className={`block text-xs ${docType === type.id ? 'text-white' : 'text-black dark:text-white'}`}>{type.label}</Text>
-                    </View>
-                  ))}
+              {/* 文档 */}
+              <View 
+                onClick={() => setShowDocPanel(true)} 
+                className={`flex flex-row items-center gap-1 px-2 py-1 rounded-full cursor-pointer active:opacity-60 transition-all duration-200 ${currentTool === 'document' ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+              >
+                <FileText size={12} color={currentTool === 'document' ? '#fff' : iconColorGray} />
+                <Text className={`block text-xs ${currentTool === 'document' ? 'text-white' : 'text-black dark:text-white'}`}>
+                  {currentTool === 'document' ? currentDocType.label : '文档'}
+                </Text>
+                <ChevronDown size={10} color={currentTool === 'document' ? '#fff' : iconColorGray} />
+              </View>
+              
+              {/* 上传文件（仅对话模式） */}
+              {currentTool === 'chat' && (
+                <View onClick={handleChooseFile} className="p-1 cursor-pointer active:opacity-60">
+                  <Plus size={16} color={iconColorGray} />
                 </View>
               )}
             </View>
-            
-            {/* 右侧：功能按钮 */}
-            {currentMainMode === 'chat' && (
-              <View className="flex flex-row items-center gap-2">
-                <View onClick={handleChooseFile} className="p-1 cursor-pointer">
-                  <Plus size={16} color={iconColorGray} />
-                </View>
-              </View>
-            )}
           </View>
         </View>
         
@@ -664,104 +702,222 @@ export default function Chat() {
         <View className="h-4" />
       </View>
 
-      {/* 对话模式选择面板 */}
+      {/* 通用面板组件 */}
+      {(showChatModePanel || showSkillPanel || showImagePanel || showDocPanel) && (
+        <View 
+          className="fixed inset-0 z-40" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', animation: 'fadeIn 0.2s ease-out' }}
+          onClick={() => {
+            setShowChatModePanel(false)
+            setShowSkillPanel(false)
+            setShowImagePanel(false)
+            setShowDocPanel(false)
+          }}
+        />
+      )}
+
+      {/* 对话模式选择面板 - 无框设计 */}
       {showChatModePanel && (
-        <>
-          <View className="fixed inset-0 z-40" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }} onClick={() => setShowChatModePanel(false)} />
-          <View className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 p-4">
-            <View className="flex flex-row items-center justify-between mb-4">
-              <Text className="block text-lg font-medium text-black dark:text-white">选择模式</Text>
-              <Text className="block text-gray-500 text-sm cursor-pointer" onClick={() => setShowChatModePanel(false)}>关闭</Text>
+        <View 
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 p-4"
+          style={{ animation: 'slideUp 0.3s ease-out' }}
+        >
+          <View className="flex flex-row items-center justify-between mb-4">
+            <Text className="block text-lg font-medium text-black dark:text-white">选择模式</Text>
+            <View onClick={() => setShowChatModePanel(false)} className="p-1 cursor-pointer active:opacity-60">
+              <X size={20} color={iconColorGray} />
             </View>
-            {chatModes.map((mode) => {
-              const isActive = chatMode === mode.id
-              const isDisabled = mode.id === 'thinking' && !currentModel.supportsThinking
-              return (
-                <View
-                  key={mode.id}
-                  className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer ${isActive ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : 'bg-gray-50 dark:bg-gray-800'} ${isDisabled ? 'opacity-40' : ''}`}
-                  onClick={() => { if (!isDisabled) { setChatMode(mode.id); setShowChatModePanel(false) } }}
-                >
-                  <View className="flex-1">
-                    <Text className={`block text-sm font-medium ${isActive ? 'text-blue-500' : 'text-black dark:text-white'}`}>{mode.label}</Text>
-                    <Text className="block text-xs text-gray-500">{mode.description}</Text>
-                  </View>
-                  {isActive && <View className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center"><Text className="block text-white text-xs">✓</Text></View>}
-                </View>
-              )
-            })}
           </View>
-        </>
+          {chatModes.map((mode, index) => {
+            const isActive = chatMode === mode.id
+            const isDisabled = mode.id === 'thinking' && !currentModel.supportsThinking
+            return (
+              <View
+                key={mode.id}
+                className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:opacity-60 ${isActive ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : ''} ${isDisabled ? 'opacity-40' : ''}`}
+                style={{ animation: `slideUp 0.3s ease-out ${index * 0.05}s both` }}
+                onClick={() => { if (!isDisabled) { setChatMode(mode.id); setShowChatModePanel(false) } }}
+              >
+                <View className="flex-1">
+                  <Text className={`block text-sm font-medium ${isActive ? 'text-blue-500' : 'text-black dark:text-white'}`}>{mode.label}</Text>
+                  <Text className="block text-xs text-gray-500">{mode.description}</Text>
+                </View>
+                {isActive && (
+                  <View 
+                    className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center"
+                    style={{ animation: 'fadeIn 0.2s ease-out' }}
+                  >
+                    <Text className="block text-white text-xs">✓</Text>
+                  </View>
+                )}
+              </View>
+            )
+          })}
+        </View>
+      )}
+
+      {/* 生图分辨率选择面板 */}
+      {showImagePanel && (
+        <View 
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 p-4"
+          style={{ animation: 'slideUp 0.3s ease-out' }}
+        >
+          <View className="flex flex-row items-center justify-between mb-4">
+            <Text className="block text-lg font-medium text-black dark:text-white">选择分辨率</Text>
+            <View onClick={() => setShowImagePanel(false)} className="p-1 cursor-pointer active:opacity-60">
+              <X size={20} color={iconColorGray} />
+            </View>
+          </View>
+          {imageSizes.map((size, index) => {
+            const isActive = imageSize === size.id
+            return (
+              <View
+                key={size.id}
+                className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:opacity-60 ${isActive ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : ''}`}
+                style={{ animation: `slideUp 0.3s ease-out ${index * 0.05}s both` }}
+                onClick={() => { 
+                  setImageSize(size.id)
+                  setCurrentTool('image')
+                  setShowImagePanel(false)
+                  setShowTextInput(true)
+                }}
+              >
+                <View className="flex-1">
+                  <Text className={`block text-sm font-medium ${isActive ? 'text-blue-500' : 'text-black dark:text-white'}`}>{size.label}</Text>
+                  <Text className="block text-xs text-gray-500">{size.description}</Text>
+                </View>
+                {isActive && (
+                  <View className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                    <Text className="block text-white text-xs">✓</Text>
+                  </View>
+                )}
+              </View>
+            )
+          })}
+        </View>
+      )}
+
+      {/* 文档类型选择面板 */}
+      {showDocPanel && (
+        <View 
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 p-4"
+          style={{ animation: 'slideUp 0.3s ease-out' }}
+        >
+          <View className="flex flex-row items-center justify-between mb-4">
+            <Text className="block text-lg font-medium text-black dark:text-white">选择文档类型</Text>
+            <View onClick={() => setShowDocPanel(false)} className="p-1 cursor-pointer active:opacity-60">
+              <X size={20} color={iconColorGray} />
+            </View>
+          </View>
+          {docTypes.map((type, index) => {
+            const isActive = docType === type.id
+            return (
+              <View
+                key={type.id}
+                className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:opacity-60 ${isActive ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : ''}`}
+                style={{ animation: `slideUp 0.3s ease-out ${index * 0.05}s both` }}
+                onClick={() => { 
+                  setDocType(type.id)
+                  setCurrentTool('document')
+                  setShowDocPanel(false)
+                  setShowTextInput(true)
+                }}
+              >
+                <View className="flex-1">
+                  <Text className={`block text-sm font-medium ${isActive ? 'text-blue-500' : 'text-black dark:text-white'}`}>{type.label}</Text>
+                  <Text className="block text-xs text-gray-500">{type.description}</Text>
+                </View>
+                {isActive && (
+                  <View className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                    <Text className="block text-white text-xs">✓</Text>
+                  </View>
+                )}
+              </View>
+            )
+          })}
+        </View>
       )}
 
       {/* 技能选择面板 */}
       {showSkillPanel && (
-        <>
-          <View className="fixed inset-0 z-40" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }} onClick={() => setShowSkillPanel(false)} />
-          <View className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 p-4 max-h-[60vh]">
-            <View className="flex flex-row items-center justify-between mb-4">
-              <Text className="block text-lg font-medium text-black dark:text-white">选择技能</Text>
-              <View className="flex flex-row items-center gap-2">
-                <View 
-                  onClick={() => { setShowSkillPanel(false); Taro.navigateTo({ url: '/pages/skills/index' }) }}
-                  className="px-2 py-1 rounded bg-blue-500 cursor-pointer"
-                >
-                  <Text className="text-xs text-white">管理技能</Text>
-                </View>
-                <Text className="block text-gray-500 text-sm cursor-pointer" onClick={() => setShowSkillPanel(false)}>关闭</Text>
+        <View 
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 p-4 max-h-[60vh]"
+          style={{ animation: 'slideUp 0.3s ease-out' }}
+        >
+          <View className="flex flex-row items-center justify-between mb-4">
+            <Text className="block text-lg font-medium text-black dark:text-white">选择技能</Text>
+            <View className="flex flex-row items-center gap-2">
+              <View 
+                onClick={() => { setShowSkillPanel(false); Taro.navigateTo({ url: '/pages/skills/index' }) }}
+                className="px-3 py-1 rounded-lg bg-blue-500 cursor-pointer active:opacity-60"
+              >
+                <Text className="text-xs text-white">管理</Text>
+              </View>
+              <View onClick={() => setShowSkillPanel(false)} className="p-1 cursor-pointer active:opacity-60">
+                <X size={20} color={iconColorGray} />
               </View>
             </View>
-            
-            {skills.length === 0 ? (
-              <View className="flex flex-col items-center py-8">
-                <Sparkles size={40} color={iconColorGray} />
-                <Text className="block text-gray-500 mt-3">暂无技能</Text>
-                <View 
-                  onClick={() => { setShowSkillPanel(false); Taro.navigateTo({ url: '/pages/skills/index' }) }}
-                  className="mt-3 px-4 py-2 rounded-lg bg-blue-500 cursor-pointer"
-                >
-                  <Text className="text-sm text-white">创建技能</Text>
-                </View>
-              </View>
-            ) : (
-              <ScrollView scrollY style={{ maxHeight: '40vh' }}>
-                {activeSkill && (
-                  <View
-                    className="flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer bg-red-50 dark:bg-red-900 dark:bg-opacity-20"
-                    onClick={() => { setActiveSkill(null); setShowSkillPanel(false) }}
-                  >
-                    <Text className="block text-sm text-red-500">取消技能调用</Text>
-                  </View>
-                )}
-                
-                {skills.map((skill) => {
-                  const IconComponent = iconComponents[skill.icon] || Sparkles
-                  const isActive = activeSkill?.id === skill.id
-                  return (
-                    <View
-                      key={skill.id}
-                      className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer ${isActive ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : 'bg-gray-50 dark:bg-gray-800'}`}
-                      onClick={() => { 
-                        setActiveSkill({ id: skill.id, name: skill.name, prompt: skill.prompt })
-                        setShowSkillPanel(false)
-                        setShowTextInput(true)
-                      }}
-                    >
-                      <View className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20 flex items-center justify-center">
-                        <IconComponent size={16} color="#1890FF" />
-                      </View>
-                      <View className="flex-1">
-                        <Text className={`block text-sm font-medium ${isActive ? 'text-blue-500' : 'text-black dark:text-white'}`}>{skill.name}</Text>
-                        <Text className="block text-xs text-gray-500">{skill.description || '暂无描述'}</Text>
-                      </View>
-                      {isActive && <View className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center"><Text className="block text-white text-xs">✓</Text></View>}
-                    </View>
-                  )
-                })}
-              </ScrollView>
-            )}
           </View>
-        </>
+          
+          {skills.length === 0 ? (
+            <View className="flex flex-col items-center py-8">
+              <Sparkles size={40} color={iconColorGray} />
+              <Text className="block text-gray-500 mt-3">暂无技能</Text>
+              <View 
+                onClick={() => { setShowSkillPanel(false); Taro.navigateTo({ url: '/pages/skills/index' }) }}
+                className="mt-3 px-4 py-2 rounded-lg bg-blue-500 cursor-pointer active:opacity-60"
+              >
+                <Text className="text-sm text-white">创建技能</Text>
+              </View>
+            </View>
+          ) : (
+            <ScrollView scrollY style={{ maxHeight: '40vh' }}>
+              {activeSkill && (
+                <View
+                  className="flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:opacity-60 bg-red-50 dark:bg-red-900 dark:bg-opacity-20"
+                  onClick={() => { 
+                    setActiveSkill(null)
+                    setCurrentTool('chat')
+                    setShowSkillPanel(false)
+                  }}
+                >
+                  <Text className="block text-sm text-red-500">取消技能调用</Text>
+                </View>
+              )}
+              
+              {skills.map((skill, index) => {
+                const IconComponent = iconComponents[skill.icon] || Sparkles
+                const isActive = activeSkill?.id === skill.id
+                return (
+                  <View
+                    key={skill.id}
+                    className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:opacity-60 ${isActive ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : ''}`}
+                    style={{ animation: `slideUp 0.3s ease-out ${index * 0.03}s both` }}
+                    onClick={() => { 
+                      setActiveSkill({ id: skill.id, name: skill.name, prompt: skill.prompt })
+                      setCurrentTool('chat')
+                      setShowSkillPanel(false)
+                      setShowTextInput(true)
+                    }}
+                  >
+                    <View className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20 flex items-center justify-center">
+                      <IconComponent size={16} color="#1890FF" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className={`block text-sm font-medium ${isActive ? 'text-blue-500' : 'text-black dark:text-white'}`}>{skill.name}</Text>
+                      <Text className="block text-xs text-gray-500">{skill.description || '暂无描述'}</Text>
+                    </View>
+                    {isActive && (
+                      <View className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                        <Text className="block text-white text-xs">✓</Text>
+                      </View>
+                    )}
+                  </View>
+                )
+              })}
+            </ScrollView>
+          )}
+        </View>
       )}
     </View>
   )
