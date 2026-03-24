@@ -30,6 +30,8 @@ export default function Chat() {
   const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
   const recorderManagerRef = useRef<Taro.RecorderManager | null>(null)
   const recognitionRef = useRef<any>(null)
+  const longPressTimerRef = useRef<any>(null)
+  const isLongPressRef = useRef(false)
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -146,33 +148,61 @@ export default function Chat() {
     }
   }
 
-  // 点击麦克风按钮
-  const handleMicClick = () => {
-    if (isRecording) {
-      // 停止录音
-      if (isWeapp) {
-        recorderManagerRef.current?.stop()
-      } else {
-        recognitionRef.current?.stop()
-      }
-      setIsRecording(false)
+  // 开始录音
+  const startRecording = () => {
+    if (isWeapp) {
+      recorderManagerRef.current?.start({ format: 'mp3', sampleRate: 16000, numberOfChannels: 1 })
+      setIsRecording(true)
     } else {
-      // 开始录音
-      if (isWeapp) {
-        recorderManagerRef.current?.start({ format: 'mp3', sampleRate: 16000, numberOfChannels: 1 })
-        setIsRecording(true)
-      } else {
-        if (recognitionRef.current) {
-          try {
-            recognitionRef.current.start()
-            setIsRecording(true)
-          } catch (err: any) {
-            console.error('Failed to start speech:', err)
-            Taro.showToast({ title: '请使用Chrome浏览器', icon: 'none' })
-          }
-        } else {
-          Taro.showToast({ title: '浏览器不支持语音识别', icon: 'none' })
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.start()
+          setIsRecording(true)
+        } catch (err: any) {
+          console.error('Failed to start speech:', err)
+          Taro.showToast({ title: '语音识别启动失败', icon: 'none' })
         }
+      } else {
+        Taro.showToast({ title: '浏览器不支持语音识别', icon: 'none' })
+      }
+    }
+  }
+
+  // 停止录音
+  const stopRecording = () => {
+    if (isWeapp) {
+      recorderManagerRef.current?.stop()
+    } else {
+      recognitionRef.current?.stop()
+    }
+    setIsRecording(false)
+  }
+
+  // 长按开始
+  const handleTouchStart = () => {
+    isLongPressRef.current = false
+    // 300ms 后触发长按
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true
+      startRecording()
+    }, 300)
+  }
+
+  // 长按结束
+  const handleTouchEnd = () => {
+    // 清除计时器
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+    
+    // 如果是长按，停止录音
+    if (isLongPressRef.current) {
+      stopRecording()
+    } else {
+      // 如果是短按，切换到文字输入
+      if (!isRecording) {
+        setShowTextInput(true)
       }
     }
   }
@@ -280,11 +310,8 @@ export default function Chat() {
       <View className="fixed bottom-0 left-0 right-0 p-3">
         <View className="bg-gray-100 dark:bg-gray-900 rounded-3xl overflow-hidden">
           {/* 上排：输入区域 */}
-          <View className={`flex items-center gap-2 px-4 py-3 ${isRecording ? 'bg-blue-500' : ''}`}>
-            <Mic size={20} color={isRecording ? '#FFFFFF' : iconColorGray} />
-            {isRecording ? (
-              <Text className="flex-1 text-white text-sm">正在聆听...</Text>
-            ) : showTextInput ? (
+          {showTextInput ? (
+            <View className="flex items-center gap-2 px-4 py-3">
               <Input
                 value={inputText}
                 onInput={(e) => setInputText(e.detail.value)}
@@ -294,16 +321,26 @@ export default function Chat() {
                 className="flex-1 bg-transparent text-sm text-black dark:text-white"
                 confirmType="send"
                 autoFocus
+                onBlur={() => { if (!inputText.trim()) setShowTextInput(false) }}
               />
-            ) : (
-              <Text className="flex-1 text-black dark:text-white text-sm">输入消息...</Text>
-            )}
-            {showTextInput && inputText.trim() && (
-              <View onClick={handleSend} className="p-1 cursor-pointer">
-                <Send size={20} color="#1890FF" />
-              </View>
-            )}
-          </View>
+              {inputText.trim() && (
+                <View onClick={handleSend} className="p-1 cursor-pointer">
+                  <Send size={20} color="#1890FF" />
+                </View>
+              )}
+            </View>
+          ) : (
+            <View 
+              className={`flex items-center justify-center gap-2 px-4 py-3 ${isRecording ? 'bg-blue-500' : ''}`}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+            >
+              <Mic size={20} color={isRecording ? '#FFFFFF' : iconColorGray} />
+              <Text className={`text-sm ${isRecording ? 'text-white' : 'text-black dark:text-white'}`}>
+                {isRecording ? '正在聆听...' : '按住说话，轻点输入'}
+              </Text>
+            </View>
+          )}
           
           {/* 分隔线 */}
           <View className="h-px bg-gray-200 dark:bg-gray-800 mx-4" />
@@ -318,10 +355,6 @@ export default function Chat() {
             
             {/* 右侧：功能按钮 */}
             <View className="flex items-center gap-2">
-              {/* 麦克风按钮 */}
-              <View onClick={handleMicClick} className="p-1 cursor-pointer">
-                <Mic size={16} color={isRecording ? '#1890FF' : iconColorGray} />
-              </View>
               {/* 加号按钮 */}
               <View onClick={handleChooseFile} className="p-1 cursor-pointer">
                 <Plus size={16} color={iconColorGray} />
