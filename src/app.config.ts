@@ -2,6 +2,7 @@ export default defineAppConfig({
   pages: [
     'pages/index/index',
     'pages/settings/index',
+    'pages/history/index',
     'pages/knowledge/index',
     'pages/memory/index',
     'pages/skills/index'

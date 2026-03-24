@@ -1,42 +1,54 @@
 import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { MessageSquare, Database, Brain, Settings, X, Sparkles } from 'lucide-react-taro'
+import { Database, Brain, Settings, X, Sparkles, History, SquarePlus } from 'lucide-react-taro'
 
 interface Props {
   onClose: () => void
+  onNewChat?: () => void
+  onOpenHistory?: () => void
 }
 
 const menuItems = [
-  { icon: MessageSquare, label: '智能对话', path: '/pages/index/index' },
   { icon: Sparkles, label: '技能库', path: '/pages/skills/index' },
   { icon: Database, label: '知识库', path: '/pages/knowledge/index' },
   { icon: Brain, label: '我的记忆', path: '/pages/memory/index' },
   { icon: Settings, label: '设置', path: '/pages/settings/index' },
 ]
 
-export function Sidebar({ onClose }: Props) {
+export function Sidebar({ onClose, onNewChat, onOpenHistory }: Props) {
   const handleNavigate = (path: string) => {
-    // 获取当前页面路由
     const pages = Taro.getCurrentPages()
     const currentPage = pages[pages.length - 1]
     const currentPath = '/' + currentPage.route
     
-    // 关闭侧边栏
     onClose()
     
-    // 如果当前已经在目标页面，不跳转
     if (currentPath === path) {
       return
     }
     
-    // 如果目标页面是主页，使用 reLaunch 清空页面栈
-    if (path === '/pages/index/index') {
-      Taro.reLaunch({ url: path })
+    Taro.navigateTo({ url: path })
+  }
+
+  const handleNewChat = () => {
+    onClose()
+    if (onNewChat) {
+      onNewChat()
     } else {
-      // 其他页面使用 navigateTo
-      Taro.navigateTo({ url: path })
+      Taro.reLaunch({ url: '/pages/index/index' })
     }
   }
+
+  const handleOpenHistory = () => {
+    onClose()
+    if (onOpenHistory) {
+      onOpenHistory()
+    } else {
+      Taro.navigateTo({ url: '/pages/history/index' })
+    }
+  }
+
+  const iconColor = '#8C8C8C'
 
   return (
     <>
@@ -47,22 +59,41 @@ export function Sidebar({ onClose }: Props) {
       />
       
       {/* 侧边栏 */}
-      <View className="fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-black z-50 shadow-xl">
+      <View className="fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-gray-900 z-50 shadow-xl">
         <View className="flex items-center justify-between p-4 border-b dark:border-gray-800">
-          <Text className="text-lg font-medium text-black dark:text-white">菜单</Text>
-          <View onClick={onClose} className="cursor-pointer">
-            <X size={24} color="#8C8C8C" />
+          <Text className="text-lg font-medium text-black dark:text-white">工作助手</Text>
+          <View onClick={onClose} className="cursor-pointer active:opacity-60">
+            <X size={24} color={iconColor} />
           </View>
         </View>
         
+        {/* 快捷操作 */}
+        <View className="p-4 border-b dark:border-gray-800">
+          <View 
+            className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20 cursor-pointer active:opacity-80 mb-2"
+            onClick={handleNewChat}
+          >
+            <SquarePlus size={20} color="#1890FF" />
+            <Text className="text-blue-500 font-medium">新建对话</Text>
+          </View>
+          <View 
+            className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 cursor-pointer active:opacity-80"
+            onClick={handleOpenHistory}
+          >
+            <History size={20} color={iconColor} />
+            <Text className="text-black dark:text-white">历史对话</Text>
+          </View>
+        </View>
+        
+        {/* 菜单项 */}
         <View className="p-4">
           {menuItems.map((item, index) => (
             <View 
               key={index}
-              className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 cursor-pointer"
+              className="flex items-center gap-3 p-3 rounded-lg cursor-pointer active:opacity-60"
               onClick={() => handleNavigate(item.path)}
             >
-              <item.icon size={20} color="#8C8C8C" />
+              <item.icon size={20} color={iconColor} />
               <Text className="text-black dark:text-white">{item.label}</Text>
             </View>
           ))}

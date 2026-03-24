@@ -67,6 +67,20 @@ export const skills = sqliteTable('skills', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 })
 
+// 会话表
+export const sessions = sqliteTable('sessions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: text('user_id').notNull().default('default-user'),
+  title: text('title').notNull().default('新对话'), // 会话标题
+  messages: text('messages').notNull().default('[]'), // 消息列表（JSON）
+  model: text('model').default('doubao'), // 使用的模型
+  mode: text('mode').default('standard'), // 对话模式
+  messageCount: integer('message_count').default(0), // 消息数量
+  lastMessageAt: integer('last_message_at', { mode: 'timestamp' }), // 最后消息时间
+  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+})
+
 // 导出类型
 export type Note = typeof notes.$inferSelect
 export type NewNote = typeof notes.$inferInsert
@@ -76,3 +90,5 @@ export type KnowledgeItem = typeof knowledgeItems.$inferSelect
 export type NewKnowledgeItem = typeof knowledgeItems.$inferInsert
 export type Skill = typeof skills.$inferSelect
 export type NewSkill = typeof skills.$inferInsert
+export type Session = typeof sessions.$inferSelect
+export type NewSession = typeof sessions.$inferInsert

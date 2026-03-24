@@ -14,6 +14,7 @@ interface ChatState {
   isLoading: boolean
   thinking: string
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void
+  setMessages: (messages: Message[]) => void
   setLoading: (loading: boolean) => void
   setThinking: (thinking: string) => void
   clearMessages: () => void
@@ -31,6 +32,8 @@ export const useChatStore = create<ChatState>((set) => ({
       timestamp: Date.now()
     }]
   })),
+  
+  setMessages: (messages) => set({ messages }),
   
   setLoading: (loading) => set({ isLoading: loading }),
   

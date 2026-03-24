@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, Input } from '@tarojs/components'
-import { useState, useEffect, useRef } from 'react'
-import Taro from '@tarojs/taro'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import Taro, { useRouter } from '@tarojs/taro'
 import { ChatBubble } from '@/components/ChatBubble'
 import { ThinkingMessage } from '@/components/ThinkingMessage'
 import { Sidebar } from '@/components/Sidebar'
@@ -57,15 +57,20 @@ const slideUpAnimation = `
 
 export default function Chat() {
   const { theme } = useThemeStore()
-  const { messages, isLoading, addMessage, setLoading } = useChatStore()
+  const { messages, isLoading, addMessage, setLoading, setMessages, clearMessages } = useChatStore()
   const { currentModel, chatMode, setChatMode } = useModelStore()
   const { skills, fetchSkills } = useSkillsStore()
+  const router = useRouter()
   
   // 基础状态
   const [inputText, setInputText] = useState('')
   const [showSidebar, setShowSidebar] = useState(false)
   const [showTextInput, setShowTextInput] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  
+  // 会话状态
+  const [currentSessionId, setCurrentSessionId] = useState<number | null>(null)
+  const isInitializedRef = useRef(false)
   
   // 面板状态
   const [showChatModePanel, setShowChatModePanel] = useState(false)
@@ -93,16 +98,99 @@ export default function Chat() {
   const recognitionRef = useRef<any>(null)
   const recognitionSupportedRef = useRef(false)
 
+  // 初始化或恢复会话
   useEffect(() => {
-    if (messages.length === 0) {
-      addMessage({
-        type: 'text',
-        content: `你好！我是${currentModel.name}，有什么可以帮你的？`,
-        from: 'ai'
-      })
-    }
+    if (isInitializedRef.current) return
+    isInitializedRef.current = true
+    
     fetchSkills()
-  }, [])
+    
+    // 检查是否有传入的会话ID
+    const sessionId = router.params.sessionId
+    if (sessionId) {
+      loadSession(Number(sessionId))
+    } else {
+      // 创建新会话
+      createNewSession()
+    }
+  }, [router.params])
+
+  // 保存会话（消息变化时自动保存）
+  useEffect(() => {
+    if (currentSessionId && messages.length > 0) {
+      saveSession()
+    }
+  }, [messages, currentSessionId])
+
+  // 创建新会话
+  const createNewSession = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/sessions',
+        method: 'POST',
+        data: { model: currentModel.id, mode: chatMode }
+      })
+      if (res.data?.data?.id) {
+        setCurrentSessionId(res.data.data.id)
+        clearMessages()
+        // 添加欢迎消息
+        addMessage({
+          type: 'text',
+          content: `你好！我是${currentModel.name}，有什么可以帮你的？`,
+          from: 'ai'
+        })
+      }
+    } catch (error) {
+      console.error('Failed to create session:', error)
+      // 创建失败时也显示欢迎消息
+      if (messages.length === 0) {
+        addMessage({
+          type: 'text',
+          content: `你好！我是${currentModel.name}，有什么可以帮你的？`,
+          from: 'ai'
+        })
+      }
+    }
+  }
+
+  // 加载会话
+  const loadSession = async (sessionId: number) => {
+    try {
+      const res = await Network.request({ url: `/api/sessions/${sessionId}` })
+      const session = res.data?.data
+      if (session && session.messages) {
+        setCurrentSessionId(sessionId)
+        setMessages(session.messages)
+      } else {
+        createNewSession()
+      }
+    } catch (error) {
+      console.error('Failed to load session:', error)
+      createNewSession()
+    }
+  }
+
+  // 保存会话
+  const saveSession = useCallback(async () => {
+    if (!currentSessionId) return
+    
+    try {
+      await Network.request({
+        url: `/api/sessions/${currentSessionId}`,
+        method: 'PUT',
+        data: {
+          messages: messages.map(m => ({
+            ...m,
+            timestamp: m.timestamp || Date.now()
+          })),
+          model: currentModel.id,
+          mode: chatMode
+        }
+      })
+    } catch (error) {
+      console.error('Failed to save session:', error)
+    }
+  }, [currentSessionId, messages, currentModel.id, chatMode])
 
   // 初始化录音（小程序）
   useEffect(() => {
@@ -141,13 +229,7 @@ export default function Chat() {
         recognition.onerror = (e: any) => {
           console.error('Speech recognition error:', e.error)
           setIsRecording(false)
-          if (e.error === 'not-allowed') {
-            Taro.showToast({ title: '请允许麦克风权限', icon: 'none', duration: 2000 })
-          } else if (e.error === 'no-speech') {
-            Taro.showToast({ title: '未检测到语音', icon: 'none' })
-          } else {
-            Taro.showToast({ title: '语音识别失败，请重试', icon: 'none' })
-          }
+          // 不再显示toast，错误已在start时处理
         }
         recognition.onend = () => setIsRecording(false)
         recognitionRef.current = recognition
@@ -337,7 +419,7 @@ export default function Chat() {
   }
 
   // 点击麦克风
-  const handleMicClick = () => {
+  const handleMicClick = async () => {
     if (isRecording) {
       if (isWeapp) {
         recorderManagerRef.current?.stop()
@@ -345,34 +427,62 @@ export default function Chat() {
         recognitionRef.current?.stop()
       }
       setIsRecording(false)
+      return
+    }
+
+    if (isWeapp) {
+      // 小程序端
+      recorderManagerRef.current?.start({ format: 'mp3', sampleRate: 16000, numberOfChannels: 1 })
+      setIsRecording(true)
     } else {
-      if (isWeapp) {
-        recorderManagerRef.current?.start({ format: 'mp3', sampleRate: 16000, numberOfChannels: 1 })
+      // H5端
+      // 检查是否支持语音识别
+      if (!recognitionSupportedRef.current) {
+        Taro.showToast({ 
+          title: '浏览器不支持语音识别，请使用Chrome', 
+          icon: 'none',
+          duration: 3000
+        })
+        return
+      }
+
+      if (!recognitionRef.current) {
+        Taro.showToast({ title: '语音识别未初始化', icon: 'none' })
+        return
+      }
+
+      try {
+        // 先请求麦克风权限
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          stream.getTracks().forEach(track => track.stop()) // 获取权限后关闭流
+        }
+        
+        // 启动语音识别
+        recognitionRef.current.start()
         setIsRecording(true)
-      } else {
-        // H5端检查是否支持语音识别
-        if (!recognitionSupportedRef.current) {
+      } catch (error: any) {
+        console.error('Mic permission error:', error)
+        setIsRecording(false)
+        
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
           Taro.showToast({ 
-            title: '浏览器不支持语音识别，请使用Chrome或Edge', 
+            title: '请在浏览器设置中允许麦克风权限', 
             icon: 'none',
             duration: 3000
           })
-          return
-        }
-        
-        if (recognitionRef.current) {
-          try {
-            // 需要在用户交互后启动
-            recognitionRef.current.start()
-            setIsRecording(true)
-          } catch (e: any) {
-            console.error('Start recognition error:', e)
-            if (e.message?.includes('already started')) {
-              // 已经在运行，忽略
-            } else {
-              Taro.showToast({ title: '请点击允许麦克风权限', icon: 'none', duration: 2000 })
-            }
-          }
+        } else if (error.name === 'NotFoundError') {
+          Taro.showToast({ 
+            title: '未检测到麦克风设备', 
+            icon: 'none',
+            duration: 3000
+          })
+        } else {
+          Taro.showToast({ 
+            title: '语音识别启动失败，请重试', 
+            icon: 'none',
+            duration: 2000
+          })
         }
       }
     }
@@ -513,6 +623,18 @@ export default function Chat() {
     return '输入消息...'
   }
 
+  // 新建对话
+  const handleNewChat = () => {
+    setShowSidebar(false)
+    createNewSession()
+  }
+
+  // 打开历史
+  const handleOpenHistory = () => {
+    setShowSidebar(false)
+    Taro.navigateTo({ url: '/pages/history/index' })
+  }
+
   const currentMode = chatModes.find(m => m.id === chatMode) || chatModes[1]
   const currentImageSize = imageSizes.find(s => s.id === imageSize) || imageSizes[0]
   const currentDocType = docTypes.find(d => d.id === docType) || docTypes[3]
@@ -526,7 +648,7 @@ export default function Chat() {
         <Text>{slideUpAnimation}</Text>
       </View>
       
-      {/* 顶部导航 - 菜单移到左边 */}
+      {/* 顶部导航 */}
       <View className="fixed top-0 left-0 right-0 z-50 bg-transparent">
         <View className="flex items-center justify-between h-14 px-4">
           <View onClick={() => setShowSidebar(true)} className="p-2 cursor-pointer active:opacity-60">
@@ -536,7 +658,13 @@ export default function Chat() {
       </View>
 
       {/* 侧边栏 */}
-      {showSidebar && <Sidebar onClose={() => setShowSidebar(false)} />}
+      {showSidebar && (
+        <Sidebar 
+          onClose={() => setShowSidebar(false)} 
+          onNewChat={handleNewChat}
+          onOpenHistory={handleOpenHistory}
+        />
+      )}
 
       {/* 对话内容 */}
       <ScrollView className="pt-16 pb-44 px-4" scrollY scrollIntoView={messages.length > 0 ? `msg-${messages[messages.length - 1].id}` : ''}>
@@ -716,7 +844,7 @@ export default function Chat() {
         />
       )}
 
-      {/* 对话模式选择面板 - 无框设计 */}
+      {/* 对话模式选择面板 */}
       {showChatModePanel && (
         <View 
           className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 p-4"
