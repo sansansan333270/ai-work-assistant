@@ -218,6 +218,8 @@ export default function Chat() {
         recognition.continuous = false
         recognition.lang = 'zh-CN'
         recognition.interimResults = true
+        recognition.maxAlternatives = 1
+        
         recognition.onresult = (e: any) => {
           const text = e.results[0][0].transcript
           setInputText(text)
@@ -227,11 +229,31 @@ export default function Chat() {
           }
         }
         recognition.onerror = (e: any) => {
-          console.error('Speech recognition error:', e.error)
+          console.error('Speech recognition error:', e.error, e.message)
           setIsRecording(false)
-          // 不再显示toast，错误已在start时处理
+          
+          // 显示具体错误
+          let errorMsg = '语音识别出错'
+          if (e.error === 'not-allowed') {
+            errorMsg = '请允许麦克风权限'
+          } else if (e.error === 'no-speech') {
+            errorMsg = '未检测到语音'
+          } else if (e.error === 'audio-capture') {
+            errorMsg = '无法捕获音频'
+          } else if (e.error === 'network') {
+            errorMsg = '网络错误'
+          } else if (e.error === 'aborted') {
+            errorMsg = '录音被中断'
+          }
+          Taro.showToast({ title: errorMsg, icon: 'none', duration: 2000 })
         }
-        recognition.onend = () => setIsRecording(false)
+        recognition.onend = () => {
+          console.log('Speech recognition ended')
+          setIsRecording(false)
+        }
+        recognition.onstart = () => {
+          console.log('Speech recognition started')
+        }
         recognitionRef.current = recognition
       } else {
         recognitionSupportedRef.current = false
@@ -436,74 +458,31 @@ export default function Chat() {
       setIsRecording(true)
     } else {
       // H5端
-      // 检查是否支持语音识别
-      if (!recognitionSupportedRef.current) {
-        // 检测是否为移动端
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-        if (isMobile) {
-          Taro.showModal({
-            title: '提示',
-            content: '手机浏览器暂不支持语音识别功能，请使用微信小程序体验完整语音功能。',
-            showCancel: false
-          })
-        } else {
-          Taro.showToast({ 
-            title: '浏览器不支持语音识别，请使用Chrome', 
-            icon: 'none',
-            duration: 3000
-          })
-        }
+      if (!recognitionSupportedRef.current || !recognitionRef.current) {
+        Taro.showToast({ 
+          title: '浏览器不支持语音识别', 
+          icon: 'none',
+          duration: 2000
+        })
         return
       }
 
-      if (!recognitionRef.current) {
-        Taro.showToast({ title: '语音识别未初始化', icon: 'none' })
-        return
-      }
-
+      // 直接启动语音识别，让浏览器自己处理权限请求
+      // 注意：不要预先调用 getUserMedia，这可能会和 SpeechRecognition 冲突
       try {
-        // 先请求麦克风权限
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-          stream.getTracks().forEach(track => track.stop()) // 获取权限后关闭流
-        }
-        
-        // 启动语音识别
         recognitionRef.current.start()
         setIsRecording(true)
       } catch (error: any) {
-        console.error('Mic permission error:', error)
+        console.error('SpeechRecognition start error:', error)
         setIsRecording(false)
         
-        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-          Taro.showToast({ 
-            title: '请在浏览器设置中允许麦克风权限', 
-            icon: 'none',
-            duration: 3000
-          })
-        } else if (error.name === 'NotFoundError') {
-          Taro.showToast({ 
-            title: '未检测到麦克风设备', 
-            icon: 'none',
-            duration: 3000
-          })
-        } else {
-          // 检测是否为移动端
-          const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-          if (isMobile) {
-            Taro.showModal({
-              title: '提示',
-              content: '手机浏览器暂不支持语音识别功能，请使用微信小程序体验完整语音功能。',
-              showCancel: false
-            })
-          } else {
-            Taro.showToast({ 
-              title: '语音识别启动失败，请重试', 
-              icon: 'none',
-              duration: 2000
-            })
-          }
+        let errorMsg = '语音识别启动失败'
+        if (error.message?.includes('not-allowed') || error.name === 'NotAllowedError') {
+          errorMsg = '请允许麦克风权限'
+        } else if (error.message) {
+          errorMsg = error.message
         }
+        Taro.showToast({ title: errorMsg, icon: 'none', duration: 2000 })
       }
     }
   }
