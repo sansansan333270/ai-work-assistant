@@ -4,21 +4,27 @@ import Taro from '@tarojs/taro'
 import { ChatBubble } from '@/components/ChatBubble'
 import { ThinkingMessage } from '@/components/ThinkingMessage'
 import { Sidebar } from '@/components/Sidebar'
-import { ChatModeSelector } from '@/components/ChatModeSelector'
 import { useThemeStore } from '@/store/theme'
 import { useChatStore } from '@/store/chat'
 import { useModelStore } from '@/store/models'
-import { Menu, Volume2, VolumeX, FileText, Mic } from 'lucide-react-taro'
+import { Menu, Volume2, VolumeX, FileText, Mic, Paperclip, Image, ChevronUp, Zap, Sparkles, Brain, X } from 'lucide-react-taro'
 import { Network } from '@/network'
 import './index.css'
+
+const modes = [
+  { id: 'fast' as const, label: '快速', icon: Zap, description: '快速响应，简洁回答' },
+  { id: 'standard' as const, label: '标准', icon: Sparkles, description: '标准模式，详细回答' },
+  { id: 'thinking' as const, label: '深度', icon: Brain, description: '深度思考，详细推理' },
+]
 
 export default function Chat() {
   const { theme } = useThemeStore()
   const { messages, isLoading, thinking, addMessage, setLoading, setThinking } = useChatStore()
-  const { currentModel, chatMode } = useModelStore()
+  const { currentModel, chatMode, setChatMode } = useModelStore()
   const [inputText, setInputText] = useState('')
   const [showSidebar, setShowSidebar] = useState(false)
   const [showTextInput, setShowTextInput] = useState(false)
+  const [showModePanel, setShowModePanel] = useState(false)
   
   // AI语音回复开关
   const [voiceReplyEnabled, setVoiceReplyEnabled] = useState(false)
@@ -37,7 +43,6 @@ export default function Chat() {
   const inputRef = useRef<any>(null)
 
   useEffect(() => {
-    // 欢迎消息
     if (messages.length === 0) {
       addMessage({
         type: 'text',
@@ -48,7 +53,6 @@ export default function Chat() {
   }, [])
 
   useEffect(() => {
-    // 初始化语音识别（仅在H5环境）
     if (typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).webkitSpeechRecognition || 
                                 (window as any).SpeechRecognition
@@ -83,7 +87,6 @@ export default function Chat() {
     }
   }, [])
 
-  // 发送消息
   const handleSend = async () => {
     if (!inputText.trim() || isLoading) return
 
@@ -110,13 +113,8 @@ export default function Chat() {
       }
 
       const aiReply = response.data?.answer || '收到，正在为你处理...'
-      addMessage({
-        type: 'text',
-        content: aiReply,
-        from: 'ai'
-      })
+      addMessage({ type: 'text', content: aiReply, from: 'ai' })
 
-      // 如果开启了语音回复，使用语音合成朗读
       if (voiceReplyEnabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(aiReply)
         utterance.lang = 'zh-CN'
@@ -125,11 +123,7 @@ export default function Chat() {
       }
     } catch (error) {
       console.error('AI request error:', error)
-      addMessage({
-        type: 'text',
-        content: '抱歉，出现了错误，请稍后重试。',
-        from: 'ai'
-      })
+      addMessage({ type: 'text', content: '抱歉，出现了错误，请稍后重试。', from: 'ai' })
     } finally {
       setLoading(false)
       setThinking('')
@@ -162,13 +156,8 @@ export default function Chat() {
       }
 
       const aiReply = response.data?.answer || '收到，正在为你处理...'
-      addMessage({
-        type: 'text',
-        content: aiReply,
-        from: 'ai'
-      })
+      addMessage({ type: 'text', content: aiReply, from: 'ai' })
 
-      // 语音回复
       if (voiceReplyEnabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(aiReply)
         utterance.lang = 'zh-CN'
@@ -177,18 +166,13 @@ export default function Chat() {
       }
     } catch (error) {
       console.error('AI request error:', error)
-      addMessage({
-        type: 'text',
-        content: '抱歉，出现了错误，请稍后重试。',
-        from: 'ai'
-      })
+      addMessage({ type: 'text', content: '抱歉，出现了错误，请稍后重试。', from: 'ai' })
     } finally {
       setLoading(false)
       setThinking('')
     }
   }
 
-  // 单击输入区域 - 显示文字输入
   const handleInputClick = () => {
     setShowTextInput(true)
     setTimeout(() => {
@@ -198,13 +182,11 @@ export default function Chat() {
     }, 100)
   }
 
-  // 长按开始语音输入
   const handleTouchStart = (e: any) => {
     const touch = e.touches[0]
     touchStartY.current = touch.clientY
     isLongPress.current = false
     
-    // 设置长按计时器（300ms判定为长按）
     longPressTimer.current = setTimeout(() => {
       isLongPress.current = true
       setIsRecording(true)
@@ -221,10 +203,8 @@ export default function Chat() {
     }, 300)
   }
 
-  // 触摸移动，检测上滑取消
   const handleTouchMove = (e: any) => {
     if (!isLongPress.current) {
-      // 如果还没进入长按状态，移动就取消长按判定
       if (longPressTimer.current) {
         clearTimeout(longPressTimer.current)
       }
@@ -234,7 +214,6 @@ export default function Chat() {
     const touch = e.touches[0]
     const deltaY = touchStartY.current - touch.clientY
     
-    // 向上滑动超过50px判定为取消
     if (deltaY > 50) {
       isCancelling.current = true
       setIsCancelling(true)
@@ -246,15 +225,12 @@ export default function Chat() {
     }
   }
 
-  // 触摸结束
   const handleTouchEnd = () => {
-    // 清除长按计时器
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current)
     }
     
     if (isRecording) {
-      // 停止语音识别
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop()
@@ -268,10 +244,38 @@ export default function Chat() {
     }
   }
 
-  // 跳转到文档工作台
-  const goToDocument = () => {
-    Taro.navigateTo({ url: '/pages/document/index' })
+  // 选择文件
+  const handleChooseFile = () => {
+    Taro.chooseMessageFile({
+      count: 1,
+      type: 'file',
+      success: (res) => {
+        const file = res.tempFiles[0]
+        addMessage({ 
+          type: 'text', 
+          content: `已选择文件：${file.name}`, 
+          from: 'user' 
+        })
+      }
+    })
   }
+
+  // 选择图片
+  const handleChooseImage = () => {
+    Taro.chooseImage({
+      count: 1,
+      success: () => {
+        addMessage({ 
+          type: 'text', 
+          content: '已选择图片', 
+          from: 'user' 
+        })
+        // TODO: 上传图片到服务器
+      }
+    })
+  }
+
+  const currentMode = modes.find(m => m.id === chatMode) || modes[1]
 
   return (
     <View className={`min-h-screen bg-white dark:bg-black ${theme === 'dark' ? 'dark' : ''}`}>
@@ -279,11 +283,8 @@ export default function Chat() {
       <View className="fixed top-0 left-0 right-0 z-50">
         <View className="flex items-center justify-between h-14 px-4">
           {/* 左侧菜单按钮 */}
-          <View 
-            onClick={() => setShowSidebar(true)} 
-            className="w-10 h-10 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center shadow-sm cursor-pointer"
-          >
-            <Menu size={20} color="#1F1F1F" />
+          <View onClick={() => setShowSidebar(true)} className="p-2 cursor-pointer">
+            <Menu size={22} color={theme === 'dark' ? '#FFFFFF' : '#1F1F1F'} />
           </View>
           
           {/* 中间标题 */}
@@ -292,28 +293,15 @@ export default function Chat() {
           </Text>
           
           {/* 右侧按钮组 */}
-          <View className="flex items-center gap-2">
-            {/* 文档工作台快捷入口 */}
-            <View 
-              onClick={goToDocument}
-              className="w-10 h-10 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center shadow-sm cursor-pointer"
-            >
-              <FileText size={20} color="#8C8C8C" />
+          <View className="flex items-center gap-1">
+            <View onClick={() => Taro.navigateTo({ url: '/pages/document/index' })} className="p-2 cursor-pointer">
+              <FileText size={22} color={theme === 'dark' ? '#FFFFFF' : '#1F1F1F'} />
             </View>
-            
-            {/* AI语音回复开关 */}
-            <View 
-              onClick={() => setVoiceReplyEnabled(!voiceReplyEnabled)}
-              className={`w-10 h-10 rounded-full flex items-center justify-center shadow-sm cursor-pointer ${
-                voiceReplyEnabled 
-                  ? 'bg-blue-500' 
-                  : 'bg-white dark:bg-gray-900'
-              }`}
-            >
+            <View onClick={() => setVoiceReplyEnabled(!voiceReplyEnabled)} className="p-2 cursor-pointer">
               {voiceReplyEnabled ? (
-                <Volume2 size={20} color="#FFFFFF" />
+                <Volume2 size={22} color="#1890FF" />
               ) : (
-                <VolumeX size={20} color="#8C8C8C" />
+                <VolumeX size={22} color={theme === 'dark' ? '#666666' : '#8C8C8C'} />
               )}
             </View>
           </View>
@@ -325,14 +313,12 @@ export default function Chat() {
 
       {/* 对话内容 */}
       <ScrollView 
-        className="pt-16 pb-40 px-4"
+        className="pt-16 pb-32 px-4"
         scrollY
         scrollIntoView={messages.length > 0 ? `msg-${messages[messages.length - 1].id}` : ''}
       >
-        {/* 思考过程 */}
         {thinking && <ThinkingMessage thinking={thinking} />}
 
-        {/* 消息列表 */}
         {messages.map((msg) => (
           <View key={msg.id} id={`msg-${msg.id}`}>
             <ChatBubble message={msg} />
@@ -367,58 +353,132 @@ export default function Chat() {
         </View>
       )}
 
+      {/* 模式选择上拉面板 */}
+      {showModePanel && (
+        <>
+          <View 
+            className="fixed inset-0 z-40"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }}
+            onClick={() => setShowModePanel(false)}
+          />
+          <View className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 p-4">
+            <View className="flex items-center justify-between mb-4">
+              <Text className="text-lg font-medium text-black dark:text-white">选择模式</Text>
+              <View onClick={() => setShowModePanel(false)} className="p-1 cursor-pointer">
+                <X size={20} color="#8C8C8C" />
+              </View>
+            </View>
+            {modes.map((mode) => {
+              const IconComponent = mode.icon
+              const isActive = chatMode === mode.id
+              const isDisabled = mode.id === 'thinking' && !currentModel.supportsThinking
+              
+              return (
+                <View
+                  key={mode.id}
+                  className={`
+                    flex items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer
+                    ${isActive ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : 'bg-gray-50 dark:bg-gray-800'}
+                    ${isDisabled ? 'opacity-40' : ''}
+                  `}
+                  onClick={() => {
+                    if (!isDisabled) {
+                      setChatMode(mode.id)
+                      setShowModePanel(false)
+                    }
+                  }}
+                >
+                  <IconComponent size={20} color={isActive ? '#1890FF' : '#8C8C8C'} />
+                  <View className="flex-1">
+                    <Text className={`text-sm font-medium ${isActive ? 'text-blue-500' : 'text-black dark:text-white'}`}>
+                      {mode.label}
+                    </Text>
+                    <Text className="text-xs text-gray-500">{mode.description}</Text>
+                  </View>
+                  {isActive && (
+                    <View className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                      <Text className="text-white text-xs">✓</Text>
+                    </View>
+                  )}
+                </View>
+              )
+            })}
+          </View>
+        </>
+      )}
+
       {/* 底部输入区域 */}
       <View className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black px-4 pt-3 pb-4">
-        {showTextInput ? (
-          // 文字输入模式
-          <View className="flex items-center gap-3">
-            <View className="flex-1 bg-gray-100 dark:bg-gray-900 rounded-full px-4 py-3">
-              <Input
-                ref={inputRef}
-                value={inputText}
-                onInput={(e) => setInputText(e.detail.value)}
-                placeholder={`向${currentModel.name}提问...`}
-                className="w-full bg-transparent text-black dark:text-white text-sm"
-                onConfirm={handleSend}
-                confirmType="send"
-                onBlur={() => {
-                  if (!inputText.trim()) {
-                    setShowTextInput(false)
-                  }
-                }}
-              />
-            </View>
-            <View 
-              className="bg-blue-500 rounded-full w-12 h-12 flex items-center justify-center cursor-pointer"
-              onClick={handleSend}
-            >
-              <Text className="text-white text-base">发送</Text>
-            </View>
-          </View>
-        ) : (
-          // 语音输入区域（单击=文字输入，长按=语音）
+        <View className="flex items-center gap-2">
+          {/* 左侧：模式选择按钮 */}
           <View 
-            className="flex items-center gap-3"
-            style={{ touchAction: 'none' }}
-            onClick={handleInputClick}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
+            onClick={() => setShowModePanel(true)}
+            className="flex items-center gap-1 px-3 py-2 bg-gray-100 dark:bg-gray-900 rounded-full cursor-pointer"
           >
-            <View className="flex-1 bg-gray-100 dark:bg-gray-900 rounded-full px-4 py-3 cursor-pointer">
+            <currentMode.icon size={14} color="#8C8C8C" />
+            <Text className="text-xs text-gray-600 dark:text-gray-400">{currentMode.label}</Text>
+            <ChevronUp size={14} color="#8C8C8C" />
+          </View>
+          
+          {/* 中间：输入区域 */}
+          {showTextInput ? (
+            <View className="flex-1 flex items-center gap-2">
+              <View className="flex-1 bg-gray-100 dark:bg-gray-900 rounded-full px-4 py-2">
+                <Input
+                  ref={inputRef}
+                  value={inputText}
+                  onInput={(e) => setInputText(e.detail.value)}
+                  placeholder="输入消息..."
+                  className="w-full bg-transparent text-black dark:text-white text-sm"
+                  onConfirm={handleSend}
+                  confirmType="send"
+                  onBlur={() => {
+                    if (!inputText.trim()) {
+                      setShowTextInput(false)
+                    }
+                  }}
+                />
+              </View>
+              <View 
+                className="bg-blue-500 rounded-full w-10 h-10 flex items-center justify-center cursor-pointer"
+                onClick={handleSend}
+              >
+                <Text className="text-white text-sm">发送</Text>
+              </View>
+            </View>
+          ) : (
+            <View 
+              className="flex-1 bg-gray-100 dark:bg-gray-900 rounded-full px-4 py-2 cursor-pointer"
+              style={{ touchAction: 'none' }}
+              onClick={handleInputClick}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
               <View className="flex items-center justify-center gap-2">
-                <Mic size={18} color="#8C8C8C" />
+                <Mic size={16} color="#8C8C8C" />
                 <Text className="text-gray-400 text-sm">
-                  {isRecording ? '正在录音...' : '按住说话，轻点输入文字'}
+                  {isRecording ? '正在录音...' : '按住说话，轻点输入'}
                 </Text>
               </View>
             </View>
+          )}
+          
+          {/* 右侧：上传按钮 */}
+          <View className="flex items-center gap-1">
+            <View 
+              onClick={handleChooseFile}
+              className="w-10 h-10 flex items-center justify-center cursor-pointer"
+            >
+              <Paperclip size={20} color={theme === 'dark' ? '#666666' : '#8C8C8C'} />
+            </View>
+            <View 
+              onClick={handleChooseImage}
+              className="w-10 h-10 flex items-center justify-center cursor-pointer"
+            >
+              <Image size={20} color={theme === 'dark' ? '#666666' : '#8C8C8C'} />
+            </View>
           </View>
-        )}
-        
-        {/* 对话模式选择器 - 放在输入框下方 */}
-        <View className="mt-2">
-          <ChatModeSelector />
         </View>
       </View>
     </View>
