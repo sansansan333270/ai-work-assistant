@@ -9,7 +9,6 @@ import { useChatStore } from '@/store/chat'
 import { useModelStore } from '@/store/models'
 import { Menu, Volume2, VolumeX, FileText, Mic, ChevronDown, Plus, Send } from 'lucide-react-taro'
 import { Network } from '@/network'
-import './index.css'
 
 const modes = [
   { id: 'fast' as const, label: '快速', description: '快速响应' },
@@ -24,6 +23,7 @@ export default function Chat() {
   const [inputText, setInputText] = useState('')
   const [showSidebar, setShowSidebar] = useState(false)
   const [showModePanel, setShowModePanel] = useState(false)
+  const [showTextInput, setShowTextInput] = useState(false)
   const [voiceReplyEnabled, setVoiceReplyEnabled] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   
@@ -71,6 +71,7 @@ export default function Chat() {
           const text = e.results[0][0].transcript
           if (text) {
             setInputText(text)
+            setShowTextInput(true)
           }
         }
         recognition.onerror = () => setIsRecording(false)
@@ -90,7 +91,10 @@ export default function Chat() {
       })
       Taro.hideLoading()
       const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
-      if (data?.text) setInputText(data.text)
+      if (data?.text) {
+        setInputText(data.text)
+        setShowTextInput(true)
+      }
     } catch {
       Taro.hideLoading()
       Taro.showToast({ title: '识别失败', icon: 'none' })
@@ -102,6 +106,7 @@ export default function Chat() {
     const userMessage = inputText.trim()
     addMessage({ type: 'text', content: userMessage, from: 'user' })
     setInputText('')
+    setShowTextInput(false)
     setLoading(true)
 
     try {
@@ -135,28 +140,37 @@ export default function Chat() {
     }
   }
 
-  // 点击麦克风
-  const handleMicClick = () => {
-    if (isWeapp) {
-      if (isRecording) {
-        recorderManagerRef.current?.stop()
-      } else {
+  // 点击输入区域
+  const handleInputAreaClick = () => {
+    setShowTextInput(true)
+  }
+
+  // 长按开始录音
+  const handleTouchStart = () => {
+    setTimeout(() => {
+      if (isWeapp) {
         recorderManagerRef.current?.start({ format: 'mp3', sampleRate: 16000, numberOfChannels: 1 })
         setIsRecording(true)
-      }
-    } else {
-      if (recognitionRef.current) {
-        if (isRecording) {
-          recognitionRef.current.stop()
-        } else {
-          try {
-            recognitionRef.current.start()
-            setIsRecording(true)
-          } catch {
-            Taro.showToast({ title: '请使用Chrome浏览器', icon: 'none' })
-          }
+      } else if (recognitionRef.current) {
+        try {
+          recognitionRef.current.start()
+          setIsRecording(true)
+        } catch {
+          Taro.showToast({ title: '请使用Chrome浏览器', icon: 'none' })
         }
       }
+    }, 300)
+  }
+
+  // 松开停止录音
+  const handleTouchEnd = () => {
+    if (isRecording) {
+      if (isWeapp) {
+        recorderManagerRef.current?.stop()
+      } else {
+        recognitionRef.current?.stop()
+      }
+      setIsRecording(false)
     }
   }
 
@@ -215,7 +229,7 @@ export default function Chat() {
       {showSidebar && <Sidebar onClose={() => setShowSidebar(false)} />}
 
       {/* 对话内容 */}
-      <ScrollView className="pt-16 pb-28 px-4" scrollY scrollIntoView={messages.length > 0 ? `msg-${messages[messages.length - 1].id}` : ''}>
+      <ScrollView className="pt-16 pb-40 px-4" scrollY scrollIntoView={messages.length > 0 ? `msg-${messages[messages.length - 1].id}` : ''}>
         {thinking && <ThinkingMessage thinking={thinking} />}
         {messages.map((msg) => (
           <View key={msg.id} id={`msg-${msg.id}`}>
@@ -259,43 +273,59 @@ export default function Chat() {
         </>
       )}
 
-      {/* 底部输入区域 - 单排 */}
+      {/* 底部输入区域 - 两排布局 */}
       <View className="fixed bottom-0 left-0 right-0 p-3">
-        <View className="flex items-center gap-2 bg-gray-100 dark:bg-gray-900 rounded-2xl px-3 py-2">
-          {/* 模式选择 */}
-          <View onClick={() => setShowModePanel(true)} className="flex items-center gap-1 cursor-pointer flex-shrink-0">
-            <Text className="block text-sm text-black dark:text-white">{currentMode.label}</Text>
-            <ChevronDown size={14} color={iconColorGray} />
-          </View>
-
-          {/* 输入框 */}
-          <View className="flex-1 min-w-0">
-            <Input
-              value={inputText}
-              onInput={(e) => setInputText(e.detail.value)}
-              onConfirm={handleSend}
-              placeholder={isRecording ? '正在录音...' : '输入消息'}
-              placeholderClass="text-gray-400"
-              className="w-full bg-transparent text-sm text-black dark:text-white"
-              confirmType="send"
-            />
-          </View>
-
-          {/* 麦克风 */}
-          <View onClick={handleMicClick} className="flex-shrink-0 p-2 cursor-pointer">
-            <Mic size={20} color={isRecording ? '#1890FF' : iconColorGray} />
-          </View>
-
-          {/* 加号/发送 */}
-          {inputText.trim() ? (
-            <View onClick={handleSend} className="flex-shrink-0 p-2 cursor-pointer">
-              <Send size={20} color="#1890FF" />
+        <View className="bg-gray-100 dark:bg-gray-900 rounded-3xl overflow-hidden">
+          {/* 上排：输入区域 */}
+          {showTextInput ? (
+            <View className="flex items-center gap-2 px-3 py-3">
+              <Input
+                value={inputText}
+                onInput={(e) => setInputText(e.detail.value)}
+                onConfirm={handleSend}
+                placeholder="输入消息..."
+                placeholderClass="text-gray-400"
+                className="flex-1 bg-transparent text-sm text-black dark:text-white"
+                confirmType="send"
+                autoFocus
+                onBlur={() => { if (!inputText.trim()) setShowTextInput(false) }}
+              />
+              <View onClick={handleSend} className="p-2 cursor-pointer">
+                <Send size={20} color="#1890FF" />
+              </View>
             </View>
           ) : (
-            <View onClick={handleChooseFile} className="flex-shrink-0 p-2 cursor-pointer">
-              <Plus size={20} color={iconColorGray} />
+            <View 
+              className={`flex items-center justify-center gap-2 px-4 py-3 cursor-pointer ${isRecording ? 'bg-blue-500' : ''}`}
+              onClick={handleInputAreaClick}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+            >
+              <Mic size={18} color={isRecording ? '#FFFFFF' : iconColorGray} />
+              <Text className={`text-sm ${isRecording ? 'text-white' : 'text-black dark:text-white'}`}>
+                {isRecording ? '正在录音...' : '按住说话，轻点输入'}
+              </Text>
             </View>
           )}
+          
+          {/* 分隔线 */}
+          <View className="h-px bg-gray-200 dark:bg-gray-800 mx-4" />
+          
+          {/* 下排：功能按钮 */}
+          <View className="flex items-center justify-between px-3 py-2">
+            {/* 左侧：模式选择 */}
+            <View onClick={() => setShowModePanel(true)} className="flex items-center gap-1 cursor-pointer">
+              <Text className="block text-xs text-black dark:text-white">{currentMode.label}</Text>
+              <ChevronDown size={12} color={iconColorGray} />
+            </View>
+            
+            {/* 右侧：功能按钮 */}
+            <View className="flex items-center gap-2">
+              <View onClick={handleChooseFile} className="p-1 cursor-pointer">
+                <Plus size={16} color={iconColorGray} />
+              </View>
+            </View>
+          </View>
         </View>
       </View>
     </View>
