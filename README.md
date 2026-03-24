@@ -201,6 +201,39 @@ server/
 
 ## 🔧 配置说明
 
+## 🔧 配置说明
+
+### 🤖 AI 模型配置
+
+**当前模式：Demo 模式（无需配置）**
+
+项目已内置 Demo 模式，无需配置 API 密钥即可体验基础功能。
+
+**配置真实AI模型（推荐）：**
+
+```bash
+# 方式一：使用配置助手
+./setup-ai.sh
+
+# 方式二：手动配置
+# 在项目根目录创建 .env.local 文件
+DEEPSEEK_API_KEY=sk-xxxxxxxx  # 推荐，性价比最高
+KIMI_API_KEY=sk-xxxxxxxx      # 支持20万字长文本
+DOUBAO_API_KEY=xxxxxxxx       # 字节跳动
+OPENAI_API_KEY=sk-xxxxxxxx    # OpenAI
+```
+
+**支持的模型：**
+
+| 模型 | 价格 | 特点 | 推荐指数 |
+|------|------|------|----------|
+| **DeepSeek** | 0.001元/千token | 支持深度思考、性价比高 | ⭐⭐⭐⭐⭐ |
+| **Kimi** | 免费额度 | 支持20万字长文本 | ⭐⭐⭐⭐ |
+| **豆包** | 部分免费 | 中文优化、响应快速 | ⭐⭐⭐⭐ |
+| **ChatGPT-4** | $0.03/千token | 最强模型 | ⭐⭐⭐ |
+
+详细配置指南：[AI_CONFIG.md](./AI_CONFIG.md)
+
 ### AI 模型配置
 
 支持以下模型：

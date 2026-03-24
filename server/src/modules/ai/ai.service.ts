@@ -70,8 +70,14 @@ export class AiService {
       throw new Error(`Model ${request.model} not found`)
     }
 
+    // 如果没有配置API密钥，使用Demo模式
     if (!modelConfig.apiKey) {
-      throw new Error(`API key not configured for model ${request.model}`)
+      console.log(`API key not configured for model ${request.model}, using demo mode`)
+      return {
+        answer: this.getDemoResponse(request.message),
+        thinking: null,
+        isDemo: true
+      }
     }
 
     // 构建消息历史
@@ -167,6 +173,17 @@ export class AiService {
       console.error('Chat with thinking API error:', error)
       throw error
     }
+  }
+
+  // Demo模式：模拟AI响应
+  private getDemoResponse(message: string) {
+    const responses = [
+      `这是一个演示回复。您提到的是："${message}"。\n\n要使用真实的AI功能，请按照 AI_CONFIG.md 文档配置API密钥。\n\n推荐使用 DeepSeek，性价比最高！`,
+      `收到您的消息："${message}"。\n\n这是Demo模式，功能有限。配置API密钥后可体验完整AI功能。`,
+      `您好！我注意到您还没有配置API密钥。\n\n当前运行在Demo模式下。请查看项目根目录的 AI_CONFIG.md 文件，按照指南配置API密钥即可使用完整功能。\n\n推荐先配置 DeepSeek，新用户有免费额度！`
+    ]
+    
+    return responses[Math.floor(Math.random() * responses.length)]
   }
 
   // 构建消息历史
