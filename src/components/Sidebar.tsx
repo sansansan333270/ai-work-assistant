@@ -1,6 +1,6 @@
 import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { MessageSquare, FileText, Presentation, Image, Database, Brain, Settings, X } from 'lucide-react-taro'
+import { MessageSquare, FileText, Presentation, Image, Database, Brain, Settings, X, Sparkles } from 'lucide-react-taro'
 
 interface Props {
   onClose: () => void
@@ -8,6 +8,7 @@ interface Props {
 
 const menuItems = [
   { icon: MessageSquare, label: '智能对话', path: '/pages/index/index' },
+  { icon: Sparkles, label: '技能库', path: '/pages/skills/index' },
   { icon: FileText, label: '文档工作台', path: '/pages/document/index' },
   { icon: Presentation, label: 'PPT工作台', path: '/pages/ppt/index' },
   { icon: Image, label: '生图工作台', path: '/pages/image/index' },

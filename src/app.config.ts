@@ -6,7 +6,8 @@ export default defineAppConfig({
     'pages/ppt/index',
     'pages/image/index',
     'pages/knowledge/index',
-    'pages/memory/index'
+    'pages/memory/index',
+    'pages/skills/index'
   ],
   window: {
     backgroundTextStyle: 'light',

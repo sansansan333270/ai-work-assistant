@@ -62,6 +62,23 @@ async function migrate() {
     )
   `)
 
+  // 创建技能表
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS skills (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL DEFAULT 'default-user',
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      prompt TEXT NOT NULL,
+      category TEXT DEFAULT 'custom',
+      icon TEXT DEFAULT 'Sparkles',
+      is_public INTEGER DEFAULT 0,
+      usage_count INTEGER DEFAULT 0,
+      created_at INTEGER DEFAULT (strftime('%s', 'now')),
+      updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+    )
+  `)
+
   console.log('Tables created successfully!')
 }
 

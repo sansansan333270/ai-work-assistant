@@ -7,7 +7,8 @@ import { Sidebar } from '@/components/Sidebar'
 import { useThemeStore } from '@/store/theme'
 import { useChatStore } from '@/store/chat'
 import { useModelStore } from '@/store/models'
-import { Menu, Volume2, VolumeX, FileText, Mic, ChevronDown, Plus, Send } from 'lucide-react-taro'
+import { useSkillsStore } from '@/store/skills'
+import { Menu, Volume2, VolumeX, FileText, Mic, ChevronDown, Plus, Send, Sparkles, Code, Pen, Zap, ChartBarBig } from 'lucide-react-taro'
 import { Network } from '@/network'
 
 const modes = [
@@ -16,16 +17,21 @@ const modes = [
   { id: 'thinking' as const, label: '深度', description: '深度思考' },
 ]
 
+const iconComponents: Record<string, any> = { Sparkles, Code, Pen, Zap, ChartBarBig }
+
 export default function Chat() {
   const { theme } = useThemeStore()
   const { messages, isLoading, thinking, addMessage, setLoading, setThinking } = useChatStore()
   const { currentModel, chatMode, setChatMode } = useModelStore()
+  const { skills, fetchSkills } = useSkillsStore()
   const [inputText, setInputText] = useState('')
   const [showSidebar, setShowSidebar] = useState(false)
   const [showModePanel, setShowModePanel] = useState(false)
+  const [showSkillPanel, setShowSkillPanel] = useState(false)
   const [showTextInput, setShowTextInput] = useState(false)
   const [voiceReplyEnabled, setVoiceReplyEnabled] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const [activeSkill, setActiveSkill] = useState<{ id: number; name: string; prompt: string } | null>(null)
   
   const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
   const recorderManagerRef = useRef<Taro.RecorderManager | null>(null)
@@ -39,6 +45,7 @@ export default function Chat() {
         from: 'ai'
       })
     }
+    fetchSkills()
   }, [])
 
   // 初始化录音（小程序）
@@ -107,7 +114,18 @@ export default function Chat() {
   const handleSend = async () => {
     if (!inputText.trim() || isLoading) return
     const userMessage = inputText.trim()
-    addMessage({ type: 'text', content: userMessage, from: 'user' })
+    
+    // 如果有激活的技能，组合提示词
+    const finalMessage = activeSkill 
+      ? `${activeSkill.prompt}\n\n用户输入：${userMessage}` 
+      : userMessage
+    
+    addMessage({ 
+      type: 'text', 
+      content: activeSkill ? `[${activeSkill.name}] ${userMessage}` : userMessage, 
+      from: 'user' 
+    })
+    
     setInputText('')
     setShowTextInput(false)
     setLoading(true)
@@ -117,12 +135,17 @@ export default function Chat() {
         url: '/api/ai/chat',
         method: 'POST',
         data: {
-          message: userMessage,
+          message: finalMessage,
           model: currentModel.id,
           mode: chatMode,
           context: messages.slice(-10)
         }
       })
+
+      // 更新技能使用次数
+      if (activeSkill) {
+        await Network.request({ url: `/api/skills/${activeSkill.id}/use`, method: 'POST' })
+      }
 
       if (response.data?.thinking) setThinking(response.data.thinking)
 
@@ -267,6 +290,78 @@ export default function Chat() {
         </>
       )}
 
+      {/* 技能选择面板 */}
+      {showSkillPanel && (
+        <>
+          <View className="fixed inset-0 z-40" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }} onClick={() => setShowSkillPanel(false)} />
+          <View className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 p-4 max-h-[60vh]">
+            <View className="flex items-center justify-between mb-4">
+              <Text className="block text-lg font-medium text-black dark:text-white">选择技能</Text>
+              <View className="flex items-center gap-2">
+                <View 
+                  onClick={() => { setShowSkillPanel(false); Taro.navigateTo({ url: '/pages/skills/index' }) }}
+                  className="px-2 py-1 rounded bg-blue-500 cursor-pointer"
+                >
+                  <Text className="text-xs text-white">管理技能</Text>
+                </View>
+                <Text className="block text-gray-500 text-sm cursor-pointer" onClick={() => setShowSkillPanel(false)}>关闭</Text>
+              </View>
+            </View>
+            
+            {/* 无技能状态 */}
+            {skills.length === 0 ? (
+              <View className="flex flex-col items-center py-8">
+                <Sparkles size={40} color={iconColorGray} />
+                <Text className="block text-gray-500 mt-3">暂无技能</Text>
+                <View 
+                  onClick={() => { setShowSkillPanel(false); Taro.navigateTo({ url: '/pages/skills/index' }) }}
+                  className="mt-3 px-4 py-2 rounded-lg bg-blue-500 cursor-pointer"
+                >
+                  <Text className="text-sm text-white">创建技能</Text>
+                </View>
+              </View>
+            ) : (
+              <ScrollView scrollY style={{ maxHeight: '40vh' }}>
+                {/* 清除技能选项 */}
+                {activeSkill && (
+                  <View
+                    className="flex items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer bg-red-50 dark:bg-red-900 dark:bg-opacity-20"
+                    onClick={() => { setActiveSkill(null); setShowSkillPanel(false) }}
+                  >
+                    <Text className="block text-sm text-red-500">取消技能调用</Text>
+                  </View>
+                )}
+                
+                {skills.map((skill) => {
+                  const IconComponent = iconComponents[skill.icon] || Sparkles
+                  const isActive = activeSkill?.id === skill.id
+                  return (
+                    <View
+                      key={skill.id}
+                      className={`flex items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer ${isActive ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : 'bg-gray-50 dark:bg-gray-800'}`}
+                      onClick={() => { 
+                        setActiveSkill({ id: skill.id, name: skill.name, prompt: skill.prompt })
+                        setShowSkillPanel(false)
+                        setShowTextInput(true)
+                      }}
+                    >
+                      <View className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20 flex items-center justify-center">
+                        <IconComponent size={16} color="#1890FF" />
+                      </View>
+                      <View className="flex-1">
+                        <Text className={`block text-sm font-medium ${isActive ? 'text-blue-500' : 'text-black dark:text-white'}`}>{skill.name}</Text>
+                        <Text className="block text-xs text-gray-500">{skill.description || '暂无描述'}</Text>
+                      </View>
+                      {isActive && <View className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center"><Text className="block text-white text-xs">✓</Text></View>}
+                    </View>
+                  )
+                })}
+              </ScrollView>
+            )}
+          </View>
+        </>
+      )}
+
       {/* 底部输入区域 - 两排布局 */}
       <View className="fixed bottom-0 left-0 right-0 p-3">
         <View className={`bg-gray-100 dark:bg-gray-900 rounded-3xl overflow-hidden ${isRecording ? 'bg-blue-500' : ''}`}>
@@ -311,10 +406,24 @@ export default function Chat() {
           
           {/* 下排：功能按钮 */}
           <View className="flex items-center justify-between px-3 py-2">
-            {/* 左侧：模式选择 */}
-            <View onClick={() => setShowModePanel(true)} className="flex items-center gap-1 cursor-pointer">
-              <Text className="block text-xs text-black dark:text-white">{currentMode.label}</Text>
-              <ChevronDown size={12} color={iconColorGray} />
+            {/* 左侧：模式选择 + 技能调用 */}
+            <View className="flex items-center gap-3">
+              <View onClick={() => setShowModePanel(true)} className="flex items-center gap-1 cursor-pointer">
+                <Text className="block text-xs text-black dark:text-white">{currentMode.label}</Text>
+                <ChevronDown size={12} color={iconColorGray} />
+              </View>
+              
+              {/* 技能调用按钮 */}
+              <View 
+                onClick={() => setShowSkillPanel(true)} 
+                className={`flex items-center gap-1 px-2 py-1 rounded-full cursor-pointer ${activeSkill ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+              >
+                <Sparkles size={12} color={activeSkill ? '#fff' : iconColorGray} />
+                <Text className={`block text-xs ${activeSkill ? 'text-white' : 'text-black dark:text-white'}`}>
+                  {activeSkill ? activeSkill.name : '技能'}
+                </Text>
+                <ChevronDown size={10} color={activeSkill ? '#fff' : iconColorGray} />
+              </View>
             </View>
             
             {/* 右侧：功能按钮 */}

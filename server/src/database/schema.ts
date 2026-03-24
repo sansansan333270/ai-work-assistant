@@ -52,6 +52,21 @@ export const knowledgeItems = sqliteTable('knowledge_items', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 })
 
+// 技能表
+export const skills = sqliteTable('skills', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: text('user_id').notNull().default('default-user'),
+  name: text('name').notNull(), // 技能名称
+  description: text('description').default(''), // 技能描述
+  prompt: text('prompt').notNull(), // 技能提示词/指令
+  category: text('category').default('custom'), // 分类：writing, coding, analysis, custom
+  icon: text('icon').default('Sparkles'), // 图标名称
+  isPublic: integer('is_public', { mode: 'boolean' }).default(false), // 是否公开
+  usageCount: integer('usage_count').default(0), // 使用次数
+  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+})
+
 // 导出类型
 export type Note = typeof notes.$inferSelect
 export type NewNote = typeof notes.$inferInsert
@@ -59,3 +74,5 @@ export type Memory = typeof memories.$inferSelect
 export type NewMemory = typeof memories.$inferInsert
 export type KnowledgeItem = typeof knowledgeItems.$inferSelect
 export type NewKnowledgeItem = typeof knowledgeItems.$inferInsert
+export type Skill = typeof skills.$inferSelect
+export type NewSkill = typeof skills.$inferInsert

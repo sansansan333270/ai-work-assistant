@@ -4,9 +4,10 @@ import { AppService } from '@/app.service'
 import { AiModule } from './modules/ai/ai.module'
 import { NotesModule } from './modules/notes/notes.module'
 import { MemoriesModule } from './modules/memories/memories.module'
+import { SkillsModule } from './modules/skills/skills.module'
 
 @Module({
-  imports: [AiModule, NotesModule, MemoriesModule],
+  imports: [AiModule, NotesModule, MemoriesModule, SkillsModule],
   controllers: [AppController],
   providers: [AppService],
 })
