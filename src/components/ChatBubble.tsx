@@ -1,5 +1,5 @@
 import { View, Text, Image } from '@tarojs/components'
-import { Download, RefreshCw, Volume2, Bookmark } from 'lucide-react-taro'
+import { Volume2, Bookmark } from 'lucide-react-taro'
 import { useState } from 'react'
 import { Network } from '@/network'
 
@@ -20,7 +20,6 @@ export function ChatBubble({ message }: Props) {
   const [saving, setSaving] = useState(false)
 
   const handlePlayVoice = () => {
-    // TTS播放
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(message.content)
       utterance.lang = 'zh-CN'
@@ -33,7 +32,6 @@ export function ChatBubble({ message }: Props) {
     
     setSaving(true)
     try {
-      // 从消息内容中提取标题（取前20个字符）
       const title = message.content.substring(0, 20) + (message.content.length > 20 ? '...' : '')
       
       await Network.request({
@@ -46,7 +44,6 @@ export function ChatBubble({ message }: Props) {
         }
       })
       
-      // 简单的成功提示
       alert('已保存到笔记本')
     } catch (error) {
       console.error('Failed to save note:', error)
@@ -65,45 +62,45 @@ export function ChatBubble({ message }: Props) {
             className="w-full rounded-xl"
             mode="widthFix"
           />
-          <View className="flex gap-4 mt-2 px-2">
-            <View className="flex items-center gap-1">
-              <Download size={14} color="#8C8C8C" />
-              <Text className="text-xs text-gray-500">下载</Text>
-            </View>
-            <View className="flex items-center gap-1">
-              <RefreshCw size={14} color="#8C8C8C" />
-              <Text className="text-xs text-gray-500">重新生成</Text>
-            </View>
-          </View>
         </View>
       </View>
     )
   }
 
+  // 用户消息：对话框形式，三个圆角，右上角直角
+  if (isUser) {
+    return (
+      <View className="flex justify-end mb-4">
+        <View 
+          className="px-4 py-3 max-w-[80%] bg-blue-500"
+          style={{
+            borderTopLeftRadius: 16,
+            borderBottomLeftRadius: 16,
+            borderBottomRightRadius: 16,
+            borderTopRightRadius: 4
+          }}
+        >
+          <Text className="text-white text-sm">{message.content}</Text>
+        </View>
+      </View>
+    )
+  }
+
+  // AI消息：无对话框，直接显示
   return (
-    <View className={`flex mb-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <View 
-        className={`
-          rounded-2xl px-4 py-3 max-w-[80%]
-          ${isUser 
-            ? 'bg-blue-500 text-white' 
-            : 'bg-gray-100 dark:bg-gray-900'
-          }
-        `}
-      >
-        <Text className={isUser ? 'text-white' : 'text-black dark:text-white'}>
-          {message.content}
-        </Text>
-        {!isUser && (
-          <View className="flex items-center gap-2 mt-2">
-            <View onClick={handlePlayVoice} className="cursor-pointer">
-              <Volume2 size={16} color="#8C8C8C" />
-            </View>
-            <View onClick={handleSaveToNote} className="cursor-pointer">
-              <Bookmark size={16} color={saving ? '#3B82F6' : '#8C8C8C'} />
-            </View>
+    <View className="flex justify-start mb-4">
+      <View className="max-w-[85%]">
+        <Text className="block text-black dark:text-white text-sm leading-relaxed">{message.content}</Text>
+        <View className="flex items-center gap-3 mt-3">
+          <View onClick={handlePlayVoice} className="flex items-center gap-1 cursor-pointer">
+            <Volume2 size={14} color="#8C8C8C" />
+            <Text className="text-xs text-gray-500">朗读</Text>
           </View>
-        )}
+          <View onClick={handleSaveToNote} className="flex items-center gap-1 cursor-pointer">
+            <Bookmark size={14} color={saving ? '#3B82F6' : '#8C8C8C'} />
+            <Text className="text-xs text-gray-500">保存</Text>
+          </View>
+        </View>
       </View>
     </View>
   )
