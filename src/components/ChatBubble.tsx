@@ -148,10 +148,10 @@ export function ChatBubble({ message }: Props) {
     )
   }
 
-  // AI消息：无对话框，直接显示（支持Markdown）
+  // AI消息：无对话框，直接显示，铺满页面
   return (
     <View className="flex justify-start mb-4">
-      <View className="max-w-[85%]">
+      <View className="w-full">
         <MarkdownRenderer content={message.content} />
         <View className="flex items-center gap-3 mt-3">
           <View onClick={handlePlayVoice} className="flex items-center gap-1 cursor-pointer">

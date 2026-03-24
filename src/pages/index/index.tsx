@@ -232,21 +232,29 @@ export default function Chat() {
     }
   }
 
+  // 切换语音回复，同时中断正在朗读的声音
+  const handleToggleVoice = () => {
+    // 中断正在朗读的声音
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+    }
+    setVoiceReplyEnabled(!voiceReplyEnabled)
+  }
+
   const currentMode = modes.find(m => m.id === chatMode) || modes[1]
   const iconColor = theme === 'dark' ? '#FFFFFF' : '#1F1F1F'
   const iconColorGray = theme === 'dark' ? '#666666' : '#8C8C8C'
 
   return (
     <View className={`min-h-screen bg-white dark:bg-black ${theme === 'dark' ? 'dark' : ''}`}>
-      {/* 顶部导航 */}
-      <View className="fixed top-0 left-0 right-0 z-50">
+      {/* 顶部导航 - 透明背景，无中间文字 */}
+      <View className="fixed top-0 left-0 right-0 z-50 bg-transparent">
         <View className="flex items-center justify-between h-14 px-4">
           <View onClick={() => setShowSidebar(true)} className="p-2 cursor-pointer">
             <Menu size={22} color={iconColor} />
           </View>
-          <Text className="text-base font-medium text-black dark:text-white">{currentModel.name}</Text>
           <View className="flex items-center gap-1">
-            <View onClick={() => setVoiceReplyEnabled(!voiceReplyEnabled)} className="p-2 cursor-pointer">
+            <View onClick={handleToggleVoice} className="p-2 cursor-pointer">
               {voiceReplyEnabled ? <Volume2 size={22} color="#1890FF" /> : <VolumeX size={22} color={iconColorGray} />}
             </View>
           </View>
