@@ -40,7 +40,7 @@ const iconComponents: Record<string, any> = { Sparkles, Code, Pen, Zap, ChartBar
 
 export default function Chat() {
   const { theme } = useThemeStore()
-  const { messages, isLoading, addMessage, setLoading, setMessages, clearMessages } = useChatStore()
+  const { messages, isLoading, addMessage, setLoading, setMessages, clearMessages, currentSessionId, setCurrentSessionId } = useChatStore()
   const { currentModel, chatMode, setChatMode } = useModelStore()
   const { skills, fetchSkills } = useSkillsStore()
   const { currentProject, setCurrentProject, fetchProjects, projects } = useProjectStore()
@@ -52,8 +52,7 @@ export default function Chat() {
   const [showTextInput, setShowTextInput] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   
-  // 会话状态
-  const [currentSessionId, setCurrentSessionId] = useState<number | null>(null)
+  // 会话状态 - currentSessionId 从 store 获取，支持持久化
   const isInitializedRef = useRef(false)
   
   // 面板状态
@@ -96,15 +95,39 @@ export default function Chat() {
       loadProject(Number(projectId))
     }
     
-    // 检查是否有传入的会话ID
-    const sessionId = router.params.sessionId
-    if (sessionId) {
-      loadSession(Number(sessionId))
+    // 检查是否有传入的会话ID（从历史页面跳转）
+    const urlSessionId = router.params.sessionId
+    if (urlSessionId) {
+      loadSession(Number(urlSessionId))
+    } else if (currentSessionId && messages.length > 0) {
+      // 有持久化的会话ID和消息，尝试恢复
+      console.log('恢复持久化会话:', currentSessionId, '消息数:', messages.length)
+      // 验证会话是否还存在后端
+      validateAndRestoreSession(currentSessionId)
     } else {
       // 创建新会话
       createNewSession(projectId ? Number(projectId) : undefined)
     }
   }, [router.params])
+  
+  // 验证并恢复持久化的会话
+  const validateAndRestoreSession = async (sessionId: number) => {
+    try {
+      const res = await Network.request({ url: `/api/sessions/${sessionId}` })
+      const session = res.data?.data
+      if (session) {
+        // 会话存在，使用持久化的消息
+        console.log('会话验证成功，使用持久化消息')
+      } else {
+        // 会话不存在，创建新会话
+        console.log('会话不存在，创建新会话')
+        createNewSession()
+      }
+    } catch (error) {
+      console.error('会话验证失败，创建新会话:', error)
+      createNewSession()
+    }
+  }
 
   // 保存会话（消息变化时自动保存）
   useEffect(() => {
