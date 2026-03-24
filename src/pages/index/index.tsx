@@ -325,15 +325,10 @@ export default function Chat() {
 
       {/* 对话内容 */}
       <ScrollView 
-        className="pt-16 pb-32 px-4"
+        className="pt-16 pb-40 px-4"
         scrollY
         scrollIntoView={messages.length > 0 ? `msg-${messages[messages.length - 1].id}` : ''}
       >
-        {/* 对话模式选择器 */}
-        <View className="mb-4">
-          <ChatModeSelector />
-        </View>
-
         {/* 思考过程 */}
         {thinking && <ThinkingMessage thinking={thinking} />}
 
@@ -373,7 +368,7 @@ export default function Chat() {
       )}
 
       {/* 底部输入区域 */}
-      <View className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black p-4">
+      <View className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black px-4 pt-3 pb-4">
         {showTextInput ? (
           // 文字输入模式
           <View className="flex items-center gap-3">
@@ -420,6 +415,11 @@ export default function Chat() {
             </View>
           </View>
         )}
+        
+        {/* 对话模式选择器 - 放在输入框下方 */}
+        <View className="mt-2">
+          <ChatModeSelector />
+        </View>
       </View>
     </View>
   )

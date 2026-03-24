@@ -1,6 +1,6 @@
 import { View, Text } from '@tarojs/components'
-import { MessageSquare, FileText, Presentation, Image, Database, Brain, Settings, X } from 'lucide-react-taro'
 import Taro from '@tarojs/taro'
+import { MessageSquare, FileText, Presentation, Image, Database, Brain, Settings, X } from 'lucide-react-taro'
 
 interface Props {
   onClose: () => void
@@ -18,8 +18,26 @@ const menuItems = [
 
 export function Sidebar({ onClose }: Props) {
   const handleNavigate = (path: string) => {
-    Taro.navigateTo({ url: path })
+    // 获取当前页面路由
+    const pages = Taro.getCurrentPages()
+    const currentPage = pages[pages.length - 1]
+    const currentPath = '/' + currentPage.route
+    
+    // 关闭侧边栏
     onClose()
+    
+    // 如果当前已经在目标页面，不跳转
+    if (currentPath === path) {
+      return
+    }
+    
+    // 如果目标页面是主页，使用 reLaunch 清空页面栈
+    if (path === '/pages/index/index') {
+      Taro.reLaunch({ url: path })
+    } else {
+      // 其他页面使用 navigateTo
+      Taro.navigateTo({ url: path })
+    }
   }
 
   return (
@@ -34,7 +52,7 @@ export function Sidebar({ onClose }: Props) {
       <View className="fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-black z-50 shadow-xl">
         <View className="flex items-center justify-between p-4 border-b dark:border-gray-800">
           <Text className="text-lg font-medium text-black dark:text-white">菜单</Text>
-          <View onClick={onClose}>
+          <View onClick={onClose} className="cursor-pointer">
             <X size={24} color="#8C8C8C" />
           </View>
         </View>

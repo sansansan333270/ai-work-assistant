@@ -34,7 +34,7 @@ export function ChatModeSelector() {
           <View
             key={mode.id}
             className={`
-              flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer transition-all
+              flex items-center gap-1 px-3 py-2 rounded-full cursor-pointer transition-all
               ${isActive 
                 ? 'bg-blue-500' 
                 : 'bg-gray-100 dark:bg-gray-900'
@@ -43,8 +43,8 @@ export function ChatModeSelector() {
             `}
             onClick={() => !isDisabled && setChatMode(mode.id)}
           >
-            <IconComponent size={16} color={isActive ? '#FFFFFF' : '#8C8C8C'} />
-            <Text className={`text-sm ${isActive ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+            <IconComponent size={12} color={isActive ? '#FFFFFF' : '#8C8C8C'} />
+            <Text className={`text-xs ${isActive ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
               {mode.label}
             </Text>
           </View>
