@@ -61,18 +61,16 @@ export default function Chat() {
   useEffect(() => {
     if (!isWeapp && typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition
-      console.log('SpeechRecognition available:', !!SpeechRecognition)
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition()
         recognition.continuous = false
         recognition.lang = 'zh-CN'
-        recognition.interimResults = false
+        recognition.interimResults = true
         recognition.onresult = (e: any) => {
-          console.log('Speech result:', e.results[0][0].transcript)
-          setIsRecording(false)
           const text = e.results[0][0].transcript
-          if (text) {
-            setInputText(text)
+          setInputText(text)
+          if (e.results[0].isFinal) {
+            setIsRecording(false)
             setShowTextInput(true)
           }
         }
@@ -82,7 +80,6 @@ export default function Chat() {
           Taro.showToast({ title: '语音识别失败', icon: 'none' })
         }
         recognition.onend = () => {
-          console.log('Speech ended')
           setIsRecording(false)
         }
         recognitionRef.current = recognition
@@ -149,10 +146,8 @@ export default function Chat() {
     }
   }
 
-  // 点击麦克风按钮 - 切换录音状态
+  // 点击麦克风按钮
   const handleMicClick = () => {
-    console.log('Mic clicked, isRecording:', isRecording, 'isWeapp:', isWeapp)
-    
     if (isRecording) {
       // 停止录音
       if (isWeapp) {
@@ -171,13 +166,11 @@ export default function Chat() {
           try {
             recognitionRef.current.start()
             setIsRecording(true)
-            console.log('Speech recognition started')
           } catch (err: any) {
-            console.error('Failed to start speech recognition:', err)
+            console.error('Failed to start speech:', err)
             Taro.showToast({ title: '请使用Chrome浏览器', icon: 'none' })
           }
         } else {
-          console.log('SpeechRecognition not available')
           Taro.showToast({ title: '浏览器不支持语音识别', icon: 'none' })
         }
       }
@@ -287,8 +280,11 @@ export default function Chat() {
       <View className="fixed bottom-0 left-0 right-0 p-3">
         <View className="bg-gray-100 dark:bg-gray-900 rounded-3xl overflow-hidden">
           {/* 上排：输入区域 */}
-          {showTextInput ? (
-            <View className="flex items-center gap-2 px-3 py-3">
+          <View className={`flex items-center gap-2 px-4 py-3 ${isRecording ? 'bg-blue-500' : ''}`}>
+            <Mic size={20} color={isRecording ? '#FFFFFF' : iconColorGray} />
+            {isRecording ? (
+              <Text className="flex-1 text-white text-sm">正在聆听...</Text>
+            ) : showTextInput ? (
               <Input
                 value={inputText}
                 onInput={(e) => setInputText(e.detail.value)}
@@ -298,34 +294,16 @@ export default function Chat() {
                 className="flex-1 bg-transparent text-sm text-black dark:text-white"
                 confirmType="send"
                 autoFocus
-                onBlur={() => { if (!inputText.trim()) setShowTextInput(false) }}
               />
-              <View onClick={handleSend} className="p-2 cursor-pointer">
+            ) : (
+              <Text className="flex-1 text-black dark:text-white text-sm">输入消息...</Text>
+            )}
+            {showTextInput && inputText.trim() && (
+              <View onClick={handleSend} className="p-1 cursor-pointer">
                 <Send size={20} color="#1890FF" />
               </View>
-            </View>
-          ) : (
-            <View 
-              className={`flex items-center justify-center gap-2 px-4 py-3 ${isRecording ? 'bg-blue-500' : ''}`}
-              onClick={() => setShowTextInput(true)}
-            >
-              {isRecording ? (
-                <>
-                  <View className="flex items-center gap-1">
-                    <View className="w-1 h-4 bg-white rounded-full" style={{ animation: 'wave 0.5s ease-in-out infinite' }} />
-                    <View className="w-1 h-4 bg-white rounded-full" style={{ animation: 'wave 0.5s ease-in-out infinite 0.1s' }} />
-                    <View className="w-1 h-4 bg-white rounded-full" style={{ animation: 'wave 0.5s ease-in-out infinite 0.2s' }} />
-                  </View>
-                  <Text className="text-sm text-white">正在聆听...</Text>
-                </>
-              ) : (
-                <>
-                  <Mic size={18} color={iconColorGray} />
-                  <Text className="text-sm text-black dark:text-white">点击输入文字</Text>
-                </>
-              )}
-            </View>
-          )}
+            )}
+          </View>
           
           {/* 分隔线 */}
           <View className="h-px bg-gray-200 dark:bg-gray-800 mx-4" />
@@ -340,7 +318,7 @@ export default function Chat() {
             
             {/* 右侧：功能按钮 */}
             <View className="flex items-center gap-2">
-              {/* 麦克风按钮 - 点击切换录音 */}
+              {/* 麦克风按钮 */}
               <View onClick={handleMicClick} className="p-1 cursor-pointer">
                 <Mic size={16} color={isRecording ? '#1890FF' : iconColorGray} />
               </View>
@@ -352,14 +330,6 @@ export default function Chat() {
           </View>
         </View>
       </View>
-
-      {/* 声纹动画样式 */}
-      <style>{`
-        @keyframes wave {
-          0%, 100% { transform: scaleY(0.5); }
-          50% { transform: scaleY(1.2); }
-        }
-      `}</style>
     </View>
   )
 }
