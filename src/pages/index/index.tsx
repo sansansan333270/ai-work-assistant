@@ -7,7 +7,7 @@ import { Sidebar } from '@/components/Sidebar'
 import { useThemeStore } from '@/store/theme'
 import { useChatStore } from '@/store/chat'
 import { useModelStore } from '@/store/models'
-import { Menu, Volume2, VolumeX, FileText, Mic, ChevronDown, Plus, Grid3x3, AtSign } from 'lucide-react-taro'
+import { Menu, Volume2, VolumeX, FileText, Mic, ChevronDown, Plus, AtSign } from 'lucide-react-taro'
 import { Network } from '@/network'
 import './index.css'
 
@@ -260,20 +260,6 @@ export default function Chat() {
     })
   }
 
-  // 选择图片
-  const handleChooseImage = () => {
-    Taro.chooseImage({
-      count: 1,
-      success: () => {
-        addMessage({ 
-          type: 'text', 
-          content: '已选择图片', 
-          from: 'user' 
-        })
-      }
-    })
-  }
-
   const currentMode = modes.find(m => m.id === chatMode) || modes[1]
   const iconColor = theme === 'dark' ? '#FFFFFF' : '#1F1F1F'
   const iconColorGray = theme === 'dark' ? '#666666' : '#8C8C8C'
@@ -311,7 +297,7 @@ export default function Chat() {
 
       {/* 对话内容 */}
       <ScrollView 
-        className="pt-16 pb-48 px-4"
+        className="pt-16 pb-44 px-4"
         scrollY
         scrollIntoView={messages.length > 0 ? `msg-${messages[messages.length - 1].id}` : ''}
       >
@@ -403,85 +389,70 @@ export default function Chat() {
         </>
       )}
 
-      {/* 底部输入区域 - 上下结构 */}
-      <View className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black px-4 pt-3 pb-4">
-        {/* 上方：语音输入提示区域 */}
-        {showTextInput ? (
-          <View className="bg-gray-100 dark:bg-gray-900 rounded-2xl px-4 py-3 mb-3">
-            <Input
-              ref={inputRef}
-              value={inputText}
-              onInput={(e) => setInputText(e.detail.value)}
-              placeholder="输入消息..."
-              className="w-full bg-transparent text-black dark:text-white text-sm"
-              onConfirm={handleSend}
-              confirmType="send"
-              onBlur={() => {
-                if (!inputText.trim()) {
-                  setShowTextInput(false)
-                }
-              }}
-            />
-          </View>
-        ) : (
-          <View 
-            className={`
-              bg-gray-100 dark:bg-gray-900 rounded-2xl py-4 mb-3 cursor-pointer
-              ${isRecording ? 'bg-red-500 dark:bg-red-500' : ''}
-            `}
-            style={{ touchAction: 'none' }}
-            onClick={handleInputClick}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            <Text className={`text-center text-base font-medium ${isRecording ? 'text-white' : 'text-black dark:text-white'}`}>
-              {isRecording ? '松开发送' : '按住 说话'}
-            </Text>
-          </View>
-        )}
-        
-        {/* 下方：功能按钮排列 */}
-        <View className="flex items-center justify-between">
-          {/* 左侧按钮组 */}
-          <View className="flex items-center gap-2">
-            {/* 模式选择按钮 */}
+      {/* 底部输入区域 - 大圆角框 */}
+      <View className="fixed bottom-0 left-0 right-0 p-3">
+        <View className="bg-gray-100 dark:bg-gray-900 rounded-3xl overflow-hidden">
+          {/* 上方：输入区域 */}
+          {showTextInput ? (
+            <View className="px-4 py-3">
+              <Input
+                ref={inputRef}
+                value={inputText}
+                onInput={(e) => setInputText(e.detail.value)}
+                placeholder="输入消息..."
+                className="w-full bg-transparent text-black dark:text-white text-sm"
+                onConfirm={handleSend}
+                confirmType="send"
+                onBlur={() => {
+                  if (!inputText.trim()) {
+                    setShowTextInput(false)
+                  }
+                }}
+              />
+            </View>
+          ) : (
+            <View 
+              className={`px-4 py-3 cursor-pointer ${isRecording ? 'bg-red-500' : ''}`}
+              style={{ touchAction: 'none' }}
+              onClick={handleInputClick}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              <Text className={`text-center text-base font-medium ${isRecording ? 'text-white' : 'text-black dark:text-white'}`}>
+                按住 说话
+              </Text>
+            </View>
+          )}
+          
+          {/* 分隔线 */}
+          <View className="h-px bg-gray-200 dark:bg-gray-800 mx-4" />
+          
+          {/* 下方：功能按钮 */}
+          <View className="flex items-center justify-between px-2 py-2">
+            {/* 左侧：模式选择 */}
             <View 
               onClick={() => setShowModePanel(true)}
-              className="flex items-center gap-1 px-3 py-2 bg-gray-100 dark:bg-gray-900 rounded-full cursor-pointer"
+              className="flex items-center gap-1 px-3 py-2 cursor-pointer"
             >
               <Text className="text-sm text-black dark:text-white">{currentMode.label}</Text>
               <ChevronDown size={14} color={iconColorGray} />
             </View>
             
-            {/* 模型选择按钮 */}
-            <View className="flex items-center gap-1 px-3 py-2 bg-gray-100 dark:bg-gray-900 rounded-full cursor-pointer">
-              <Text className="text-sm text-black dark:text-white">{currentModel.name}</Text>
-              <ChevronDown size={14} color={iconColorGray} />
-            </View>
-          </View>
-          
-          {/* 右侧按钮组 */}
-          <View className="flex items-center gap-2">
-            {/* @ 按钮 */}
-            <View className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-900 flex items-center justify-center cursor-pointer">
-              <AtSign size={18} color={iconColor} />
-            </View>
-            
-            {/* 图片按钮 */}
-            <View 
-              onClick={handleChooseImage}
-              className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-900 flex items-center justify-center cursor-pointer"
-            >
-              <Grid3x3 size={18} color={iconColor} />
-            </View>
-            
-            {/* 文件按钮 */}
-            <View 
-              onClick={handleChooseFile}
-              className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-900 flex items-center justify-center cursor-pointer"
-            >
-              <Plus size={18} color={iconColor} />
+            {/* 右侧：功能按钮 */}
+            <View className="flex items-center gap-1">
+              {/* @ 按钮 */}
+              <View className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer">
+                <AtSign size={20} color={iconColorGray} />
+              </View>
+              
+              {/* 加号按钮 - 上传文件 */}
+              <View 
+                onClick={handleChooseFile}
+                className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
+              >
+                <Plus size={20} color={iconColorGray} />
+              </View>
             </View>
           </View>
         </View>
