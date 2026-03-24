@@ -13,7 +13,6 @@ interface Voice {
   name: string
   description: string
   gender: 'male' | 'female'
-  category: string
 }
 
 export default function Settings() {

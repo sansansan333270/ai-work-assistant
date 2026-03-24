@@ -39,9 +39,32 @@ export function ChatBubble({ message, autoPlay = false }: Props) {
     
     try {
       // 获取用户选择的音色
-      const voiceId = typeof window !== 'undefined' 
-        ? localStorage.getItem('selectedVoiceId') || 'zh_female_xiaohe_uranus_bigtts' 
-        : 'zh_female_xiaohe_uranus_bigtts'
+      // 有效的音色ID列表（与后端保持一致）
+      const validVoiceIds = [
+        'zh_female_xiaohe_uranus_bigtts',
+        'zh_female_vv_uranus_bigtts',
+        'zh_female_xueayi_saturn_bigtts',
+        'zh_female_mizai_saturn_bigtts',
+        'zh_female_jitangnv_saturn_bigtts',
+        'zh_male_m191_uranus_bigtts',
+        'zh_male_taocheng_uranus_bigtts',
+        'zh_male_dayi_saturn_bigtts',
+      ]
+      const defaultVoice = 'zh_female_xiaohe_uranus_bigtts'
+      
+      // 获取用户选择的音色，如果无效则使用默认值
+      let voiceId = typeof window !== 'undefined' 
+        ? localStorage.getItem('selectedVoiceId') || defaultVoice
+        : defaultVoice
+      
+      // 验证音色ID是否有效
+      if (!validVoiceIds.includes(voiceId)) {
+        voiceId = defaultVoice
+        // 清除无效的localStorage值
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('selectedVoiceId')
+        }
+      }
       
       // 清理Markdown格式
       const cleanText = cleanMarkdownForSpeech(message.content)
