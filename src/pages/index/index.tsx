@@ -248,11 +248,13 @@ export default function Chat() {
         {messages.map((msg, index) => {
           const isLastUserMessage = msg.from === 'user' && index === messages.length - 1
           const showThinkingAfterThis = isLastUserMessage && (isThinking || lastThinking)
+          // 最新一条AI消息自动朗读
+          const isLastAIMessage = msg.from === 'ai' && index === messages.length - 1
           
           return (
             <View key={msg.id}>
               <View id={`msg-${msg.id}`}>
-                <ChatBubble message={msg} />
+                <ChatBubble message={msg} autoPlay={isLastAIMessage && !isLoading} />
               </View>
               
               {/* 思考过程 - 跟在最后一条用户消息后面 */}

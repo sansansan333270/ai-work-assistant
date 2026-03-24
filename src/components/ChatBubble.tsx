@@ -1,6 +1,6 @@
 import { View, Text, Image } from '@tarojs/components'
 import { Volume2, VolumeX, Bookmark } from 'lucide-react-taro'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Taro from '@tarojs/taro'
 import { Network } from '@/network'
 import { useAudioStore } from '@/store/audio'
@@ -15,22 +15,16 @@ interface Message {
 
 interface Props {
   message: Message
+  autoPlay?: boolean // 是否自动朗读
 }
 
-// 扣子TTS音色映射
-const voiceMap: Record<string, string> = {
-  default: 'zh_female_xiaohe_uranus_bigtts',
-  friendly: 'zh_female_xueayi_saturn_bigtts',
-  professional: 'zh_male_m191_uranus_bigtts',
-  lively: 'zh_female_mizai_saturn_bigtts',
-}
-
-export function ChatBubble({ message }: Props) {
+export function ChatBubble({ message, autoPlay = false }: Props) {
   const isUser = message.from === 'user'
   const isImage = message.type === 'image'
   const [saving, setSaving] = useState(false)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const hasAutoPlayed = useRef(false) // 防止重复自动播放
   
   // 使用全局音频状态
   const { currentMessageId, isPlaying, playAudio, stopAudio } = useAudioStore()
@@ -39,20 +33,15 @@ export function ChatBubble({ message }: Props) {
   const isCurrentMessage = currentMessageId === message.id
   const isSpeaking = isCurrentMessage && isPlaying
 
-  // 预加载音频
-  useEffect(() => {
-    if (!isUser && !isImage && message.content) {
-      loadAudio()
-    }
-  }, [message.content])
-
-  const loadAudio = async () => {
+  // 获取音频URL
+  const getAudioUrl = async (): Promise<string | null> => {
+    if (audioUrl) return audioUrl
+    
     try {
       // 获取用户选择的音色
-      const voiceSetting = typeof window !== 'undefined' 
-        ? localStorage.getItem('voiceSetting') || 'default' 
-        : 'default'
-      const speaker = voiceMap[voiceSetting] || voiceMap.default
+      const voiceId = typeof window !== 'undefined' 
+        ? localStorage.getItem('selectedVoiceId') || 'zh_female_xiaohe_uranus_bigtts' 
+        : 'zh_female_xiaohe_uranus_bigtts'
       
       // 清理Markdown格式
       const cleanText = cleanMarkdownForSpeech(message.content)
@@ -63,7 +52,7 @@ export function ChatBubble({ message }: Props) {
         method: 'POST',
         data: {
           text: cleanText,
-          speaker,
+          speaker: voiceId,
         },
       })
 
@@ -71,12 +60,38 @@ export function ChatBubble({ message }: Props) {
       
       if (data?.data?.audioUrl) {
         setAudioUrl(data.data.audioUrl)
+        return data.data.audioUrl
       }
+      return null
     } catch (error) {
       console.error('Load audio error:', error)
+      return null
     }
   }
 
+  // 自动朗读（仅对新的AI消息）
+  useEffect(() => {
+    if (!isUser && !isImage && autoPlay && !hasAutoPlayed.current && message.content) {
+      hasAutoPlayed.current = true
+      
+      // 检查是否开启自动朗读
+      const autoSpeakEnabled = typeof window !== 'undefined' 
+        ? localStorage.getItem('autoSpeak') === 'true'
+        : false
+      
+      if (autoSpeakEnabled) {
+        // 延迟一点，确保消息渲染完成
+        setTimeout(async () => {
+          const url = await getAudioUrl()
+          if (url) {
+            playAudio(message.id, url)
+          }
+        }, 300)
+      }
+    }
+  }, [message.id, autoPlay])
+
+  // 手动播放/停止
   const handlePlayVoice = async () => {
     // 如果正在播放当前消息，则停止
     if (isSpeaking) {
@@ -84,39 +99,11 @@ export function ChatBubble({ message }: Props) {
       return
     }
     
-    // 如果有缓存的音频URL，直接播放
-    if (audioUrl) {
-      playAudio(message.id, audioUrl)
-      return
-    }
-
-    // 否则先加载音频
     setLoading(true)
     try {
-      // 获取用户选择的音色
-      const voiceSetting = typeof window !== 'undefined' 
-        ? localStorage.getItem('voiceSetting') || 'default' 
-        : 'default'
-      const speaker = voiceMap[voiceSetting] || voiceMap.default
-      
-      // 清理Markdown格式
-      const cleanText = cleanMarkdownForSpeech(message.content)
-      
-      // 调用扣子TTS接口
-      const response = await Network.request({
-        url: '/api/tts/synthesize',
-        method: 'POST',
-        data: {
-          text: cleanText,
-          speaker,
-        },
-      })
-
-      const data = response.data as { data?: { audioUrl?: string }; code?: number }
-      
-      if (data?.data?.audioUrl) {
-        setAudioUrl(data.data.audioUrl)
-        playAudio(message.id, data.data.audioUrl)
+      const url = await getAudioUrl()
+      if (url) {
+        playAudio(message.id, url)
       } else {
         Taro.showToast({ title: '语音合成失败', icon: 'none' })
       }
