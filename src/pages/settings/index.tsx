@@ -1,7 +1,7 @@
 import { View, Text } from '@tarojs/components'
 import { useState, useEffect } from 'react'
 import Taro from '@tarojs/taro'
-import { Sun, Moon, Check, ChevronLeft, Volume2 } from 'lucide-react-taro'
+import { Sun, Moon, Check, ChevronLeft, Volume2, Download, Database } from 'lucide-react-taro'
 import { useThemeStore } from '@/store/theme'
 import { useModelStore } from '@/store/models'
 import { AI_MODELS } from '@/config/models'
@@ -15,6 +15,15 @@ interface Voice {
   gender: 'male' | 'female'
 }
 
+interface DataStats {
+  notes: number
+  memories: number
+  knowledgeItems: number
+  skills: number
+  sessions: number
+  total: number
+}
+
 export default function Settings() {
   const { theme, toggleTheme } = useThemeStore()
   const { currentModel, setCurrentModel } = useModelStore()
@@ -22,6 +31,8 @@ export default function Settings() {
   const [selectedVoiceId, setSelectedVoiceId] = useState('zh_female_xiaohe_uranus_bigtts')
   const [voices, setVoices] = useState<Voice[]>([])
   const [showVoicePanel, setShowVoicePanel] = useState(false)
+  const [dataStats, setDataStats] = useState<DataStats | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
 
   useEffect(() => {
     // 从localStorage读取设置
@@ -39,6 +50,8 @@ export default function Settings() {
     
     // 获取音色列表
     fetchVoices()
+    // 获取数据统计
+    fetchDataStats()
   }, [])
 
   // 获取音色列表
@@ -54,6 +67,45 @@ export default function Settings() {
       }
     } catch (error) {
       console.error('Failed to fetch voices:', error)
+    }
+  }
+
+  // 获取数据统计
+  const fetchDataStats = async () => {
+    try {
+      const response = await Network.request({
+        url: '/api/data-export/stats',
+        method: 'GET',
+      })
+      const data = response.data as { data?: DataStats }
+      if (data?.data) {
+        setDataStats(data.data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch data stats:', error)
+    }
+  }
+
+  // 导出数据
+  const handleExportData = async () => {
+    if (isExporting) return
+    
+    setIsExporting(true)
+    Taro.showLoading({ title: '正在导出...' })
+    
+    try {
+      // 直接打开导出链接
+      if (typeof window !== 'undefined') {
+        window.open('/api/data-export/json', '_blank')
+      }
+      Taro.hideLoading()
+      Taro.showToast({ title: '导出成功', icon: 'success' })
+    } catch (error) {
+      Taro.hideLoading()
+      Taro.showToast({ title: '导出失败', icon: 'error' })
+      console.error('Export failed:', error)
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -209,6 +261,67 @@ export default function Settings() {
           <View className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4">
             <Text className="text-black dark:text-white text-sm">AI工作助手 v1.0.0</Text>
             <Text className="text-xs text-gray-500 dark:text-gray-400 mt-2">基于 Taro + DeepSeek 构建</Text>
+          </View>
+        </View>
+
+        {/* 数据管理 */}
+        <View className="mb-6">
+          <Text className="text-sm text-gray-500 dark:text-gray-400 mb-3">数据管理</Text>
+          <View className="bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden">
+            {/* 数据统计 */}
+            <View className="p-4 border-b border-gray-200 dark:border-gray-800">
+              <View className="flex items-center gap-3 mb-3">
+                <Database size={20} color={iconColorGray} />
+                <Text className="text-black dark:text-white font-medium">我的数据</Text>
+              </View>
+              {dataStats ? (
+                <View className="grid grid-cols-3 gap-2">
+                  <View className="bg-white dark:bg-gray-800 rounded-lg p-2 text-center">
+                    <Text className="text-lg font-bold text-green-500">{dataStats.notes}</Text>
+                    <Text className="text-xs text-gray-500 dark:text-gray-400">笔记</Text>
+                  </View>
+                  <View className="bg-white dark:bg-gray-800 rounded-lg p-2 text-center">
+                    <Text className="text-lg font-bold text-green-500">{dataStats.memories}</Text>
+                    <Text className="text-xs text-gray-500 dark:text-gray-400">记忆</Text>
+                  </View>
+                  <View className="bg-white dark:bg-gray-800 rounded-lg p-2 text-center">
+                    <Text className="text-lg font-bold text-green-500">{dataStats.knowledgeItems}</Text>
+                    <Text className="text-xs text-gray-500 dark:text-gray-400">知识库</Text>
+                  </View>
+                  <View className="bg-white dark:bg-gray-800 rounded-lg p-2 text-center">
+                    <Text className="text-lg font-bold text-green-500">{dataStats.skills}</Text>
+                    <Text className="text-xs text-gray-500 dark:text-gray-400">技能</Text>
+                  </View>
+                  <View className="bg-white dark:bg-gray-800 rounded-lg p-2 text-center">
+                    <Text className="text-lg font-bold text-green-500">{dataStats.sessions}</Text>
+                    <Text className="text-xs text-gray-500 dark:text-gray-400">会话</Text>
+                  </View>
+                  <View className="bg-white dark:bg-gray-800 rounded-lg p-2 text-center">
+                    <Text className="text-lg font-bold text-green-500">{dataStats.total}</Text>
+                    <Text className="text-xs text-gray-500 dark:text-gray-400">总计</Text>
+                  </View>
+                </View>
+              ) : (
+                <Text className="text-sm text-gray-400">加载中...</Text>
+              )}
+            </View>
+            
+            {/* 导出数据 */}
+            <View 
+              className={`p-4 cursor-pointer active:scale-98 transition-all duration-150 ${isExporting ? 'opacity-50' : ''}`} 
+              onClick={handleExportData}
+            >
+              <View className="flex items-center justify-between">
+                <View className="flex items-center gap-3">
+                  <Download size={20} color={iconColorGray} />
+                  <View>
+                    <Text className="text-black dark:text-white">导出数据</Text>
+                    <Text className="text-xs text-gray-500 dark:text-gray-400">下载JSON格式的完整数据备份</Text>
+                  </View>
+                </View>
+                <Text className="text-gray-400 text-sm">{'>'}</Text>
+              </View>
+            </View>
           </View>
         </View>
       </View>
