@@ -30,6 +30,8 @@ export default function Chat() {
   const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
   const recorderManagerRef = useRef<Taro.RecorderManager | null>(null)
   const recognitionRef = useRef<any>(null)
+  const longPressTimerRef = useRef<any>(null)
+  const isLongPressRef = useRef(false)
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -140,14 +142,15 @@ export default function Chat() {
     }
   }
 
-  // 点击输入区域
-  const handleInputAreaClick = () => {
-    setShowTextInput(true)
-  }
-
-  // 长按开始录音
+  // 触摸开始 - 判断是点击还是长按
   const handleTouchStart = () => {
-    setTimeout(() => {
+    isLongPressRef.current = false
+    
+    // 300ms 后触发长按
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true
+      
+      // 启动录音
       if (isWeapp) {
         recorderManagerRef.current?.start({ format: 'mp3', sampleRate: 16000, numberOfChannels: 1 })
         setIsRecording(true)
@@ -162,8 +165,36 @@ export default function Chat() {
     }, 300)
   }
 
-  // 松开停止录音
+  // 触摸结束
   const handleTouchEnd = () => {
+    // 清除计时器
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+    
+    // 如果是长按，停止录音
+    if (isLongPressRef.current && isRecording) {
+      if (isWeapp) {
+        recorderManagerRef.current?.stop()
+      } else {
+        recognitionRef.current?.stop()
+      }
+      setIsRecording(false)
+    }
+    // 如果是短按，切换到文字输入
+    else if (!isLongPressRef.current && !isRecording) {
+      setShowTextInput(true)
+    }
+  }
+
+  // 触摸取消（如手指滑出）
+  const handleTouchCancel = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+    
     if (isRecording) {
       if (isWeapp) {
         recorderManagerRef.current?.stop()
@@ -297,9 +328,9 @@ export default function Chat() {
           ) : (
             <View 
               className={`flex items-center justify-center gap-2 px-4 py-3 cursor-pointer ${isRecording ? 'bg-blue-500' : ''}`}
-              onClick={handleInputAreaClick}
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchCancel}
             >
               <Mic size={18} color={isRecording ? '#FFFFFF' : iconColorGray} />
               <Text className={`text-sm ${isRecording ? 'text-white' : 'text-black dark:text-white'}`}>
