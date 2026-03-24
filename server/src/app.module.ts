@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { AppController } from '@/app.controller'
 import { AppService } from '@/app.service'
+import { DownloadController } from './download.controller'
 import { AiModule } from './modules/ai/ai.module'
 import { NotesModule } from './modules/notes/notes.module'
 import { MemoriesModule } from './modules/memories/memories.module'
@@ -14,7 +15,7 @@ import { ProjectsModule } from './modules/projects/projects.module'
 
 @Module({
   imports: [AiModule, NotesModule, MemoriesModule, SkillsModule, TtsModule, UploadModule, ImageModule, DocumentModule, SessionsModule, ProjectsModule],
-  controllers: [AppController],
+  controllers: [AppController, DownloadController],
   providers: [AppService],
 })
 export class AppModule {}
