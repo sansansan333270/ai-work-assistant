@@ -2,6 +2,7 @@ import { View, Text, Image } from '@tarojs/components'
 import { Volume2, Bookmark } from 'lucide-react-taro'
 import { useState } from 'react'
 import { Network } from '@/network'
+import { MarkdownRenderer } from './MarkdownRenderer'
 
 interface Message {
   id: string
@@ -86,11 +87,11 @@ export function ChatBubble({ message }: Props) {
     )
   }
 
-  // AI消息：无对话框，直接显示
+  // AI消息：无对话框，直接显示（支持Markdown）
   return (
     <View className="flex justify-start mb-4">
       <View className="max-w-[85%]">
-        <Text className="block text-black dark:text-white text-sm leading-relaxed">{message.content}</Text>
+        <MarkdownRenderer content={message.content} />
         <View className="flex items-center gap-3 mt-3">
           <View onClick={handlePlayVoice} className="flex items-center gap-1 cursor-pointer">
             <Volume2 size={14} color="#8C8C8C" />
