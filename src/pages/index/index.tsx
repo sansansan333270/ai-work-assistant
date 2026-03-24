@@ -412,15 +412,16 @@ export default function Chat() {
             </View>
           ) : (
             <View 
-              className={`px-4 py-3 cursor-pointer ${isRecording ? 'bg-red-500' : ''}`}
+              className={`flex items-center justify-center gap-2 px-4 py-3 cursor-pointer ${isRecording ? 'bg-red-500' : ''}`}
               style={{ touchAction: 'none' }}
               onClick={handleInputClick}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
             >
-              <Text className={`text-center text-base font-medium ${isRecording ? 'text-white' : 'text-black dark:text-white'}`}>
-                按住 说话
+              <Mic size={18} color={isRecording ? '#FFFFFF' : iconColorGray} />
+              <Text className={`text-sm ${isRecording ? 'text-white' : 'text-black dark:text-white'}`}>
+                按住说话，轻点输入
               </Text>
             </View>
           )}
