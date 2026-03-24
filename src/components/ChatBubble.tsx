@@ -1,8 +1,8 @@
 import { View, Text, Image } from '@tarojs/components'
-import { Volume2, Bookmark } from 'lucide-react-taro'
-import { useState } from 'react'
+import { Volume2, VolumeX, Bookmark } from 'lucide-react-taro'
+import { useState, useEffect } from 'react'
 import { Network } from '@/network'
-import { MarkdownRenderer } from './MarkdownRenderer'
+import { MarkdownRenderer, cleanMarkdownForSpeech } from './MarkdownRenderer'
 
 interface Message {
   id: string
@@ -15,17 +15,78 @@ interface Props {
   message: Message
 }
 
+// 语音音色配置
+const voiceOptions = [
+  { id: 'default', name: '默认', pitch: 1, rate: 1 },
+  { id: 'friendly', name: '亲切', pitch: 1.1, rate: 0.9 },
+  { id: 'professional', name: '专业', pitch: 1, rate: 0.95 },
+  { id: 'lively', name: '活泼', pitch: 1.2, rate: 1.1 },
+]
+
 export function ChatBubble({ message }: Props) {
   const isUser = message.from === 'user'
   const isImage = message.type === 'image'
   const [saving, setSaving] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [selectedVoice, setSelectedVoice] = useState('default')
+
+  useEffect(() => {
+    // 从localStorage读取音色设置
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('voiceSetting')
+      if (saved) {
+        setSelectedVoice(saved)
+      }
+    }
+    
+    // 监听语音结束
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      speechSynthesis.onvoiceschanged = () => {
+        // 语音列表加载完成
+      }
+    }
+  }, [])
 
   const handlePlayVoice = () => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(message.content)
-      utterance.lang = 'zh-CN'
-      speechSynthesis.speak(utterance)
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      return
     }
+
+    // 如果正在朗读，停止
+    if (isSpeaking) {
+      window.speechSynthesis.cancel()
+      setIsSpeaking(false)
+      return
+    }
+
+    // 清理Markdown格式
+    const cleanText = cleanMarkdownForSpeech(message.content)
+    
+    const utterance = new SpeechSynthesisUtterance(cleanText)
+    utterance.lang = 'zh-CN'
+    
+    // 应用音色设置
+    const voiceSetting = voiceOptions.find(v => v.id === selectedVoice) || voiceOptions[0]
+    utterance.pitch = voiceSetting.pitch
+    utterance.rate = voiceSetting.rate
+    
+    // 尝试选择中文语音
+    const voices = window.speechSynthesis.getVoices()
+    const zhVoice = voices.find(v => v.lang.includes('zh'))
+    if (zhVoice) {
+      utterance.voice = zhVoice
+    }
+    
+    utterance.onend = () => {
+      setIsSpeaking(false)
+    }
+    
+    utterance.onerror = () => {
+      setIsSpeaking(false)
+    }
+    
+    setIsSpeaking(true)
+    window.speechSynthesis.speak(utterance)
   }
 
   const handleSaveToNote = async () => {
@@ -94,8 +155,14 @@ export function ChatBubble({ message }: Props) {
         <MarkdownRenderer content={message.content} />
         <View className="flex items-center gap-3 mt-3">
           <View onClick={handlePlayVoice} className="flex items-center gap-1 cursor-pointer">
-            <Volume2 size={14} color="#8C8C8C" />
-            <Text className="text-xs text-gray-500">朗读</Text>
+            {isSpeaking ? (
+              <VolumeX size={14} color="#1890FF" />
+            ) : (
+              <Volume2 size={14} color="#8C8C8C" />
+            )}
+            <Text className={`text-xs ${isSpeaking ? 'text-blue-500' : 'text-gray-500'}`}>
+              {isSpeaking ? '停止' : '朗读'}
+            </Text>
           </View>
           <View onClick={handleSaveToNote} className="flex items-center gap-1 cursor-pointer">
             <Bookmark size={14} color={saving ? '#3B82F6' : '#8C8C8C'} />
@@ -106,3 +173,6 @@ export function ChatBubble({ message }: Props) {
     </View>
   )
 }
+
+// 导出音色选项供设置页面使用
+export { voiceOptions }

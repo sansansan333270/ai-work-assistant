@@ -26,7 +26,7 @@ export function MarkdownRenderer({ content }: Props) {
           inCodeBlock = false
         } else {
           if (inList) {
-            nodes.push({ type: 'list', items: listItems })
+            nodes.push({ type: 'list', items: [...listItems] })
             listItems = []
             inList = false
           }
@@ -44,7 +44,7 @@ export function MarkdownRenderer({ content }: Props) {
       const headerMatch = line.match(/^(#{1,6})\s+(.+)$/)
       if (headerMatch) {
         if (inList) {
-          nodes.push({ type: 'list', items: listItems })
+          nodes.push({ type: 'list', items: [...listItems] })
           listItems = []
           inList = false
         }
@@ -75,7 +75,7 @@ export function MarkdownRenderer({ content }: Props) {
       // 空行
       if (line.trim() === '') {
         if (inList) {
-          nodes.push({ type: 'list', items: listItems })
+          nodes.push({ type: 'list', items: [...listItems] })
           listItems = []
           inList = false
         }
@@ -84,7 +84,7 @@ export function MarkdownRenderer({ content }: Props) {
 
       // 普通段落
       if (inList) {
-        nodes.push({ type: 'list', items: listItems })
+        nodes.push({ type: 'list', items: [...listItems] })
         listItems = []
         inList = false
       }
@@ -93,7 +93,7 @@ export function MarkdownRenderer({ content }: Props) {
 
     // 处理最后可能剩余的列表
     if (inList && listItems.length > 0) {
-      nodes.push({ type: 'list', items: listItems })
+      nodes.push({ type: 'list', items: [...listItems] })
     }
 
     return nodes
@@ -101,53 +101,89 @@ export function MarkdownRenderer({ content }: Props) {
 
   // 渲染行内格式（粗体、斜体、代码）
   const renderInlineFormat = (text: string) => {
-    const parts: Array<{ text: string; bold?: boolean; italic?: boolean; code?: boolean }> = []
-    let remaining = text
-    
-    while (remaining.length > 0) {
+    // 使用更健壮的方式处理行内格式
+    const result: Array<{ text: string; bold?: boolean; italic?: boolean; code?: boolean }> = []
+    let i = 0
+    let currentText = ''
+
+    while (i < text.length) {
       // 行内代码 `code`
-      const codeMatch = remaining.match(/`([^`]+)`/)
-      if (codeMatch && codeMatch.index !== undefined) {
-        if (codeMatch.index > 0) {
-          parts.push({ text: remaining.substring(0, codeMatch.index) })
+      if (text[i] === '`') {
+        const endIndex = text.indexOf('`', i + 1)
+        if (endIndex !== -1) {
+          if (currentText) {
+            result.push({ text: currentText })
+            currentText = ''
+          }
+          result.push({ text: text.slice(i + 1, endIndex), code: true })
+          i = endIndex + 1
+          continue
         }
-        parts.push({ text: codeMatch[1], code: true })
-        remaining = remaining.substring(codeMatch.index + codeMatch[0].length)
-        continue
       }
       
       // 粗体 **text**
-      const boldMatch = remaining.match(/\*\*([^*]+)\*\*/)
-      if (boldMatch && boldMatch.index !== undefined) {
-        if (boldMatch.index > 0) {
-          parts.push({ text: remaining.substring(0, boldMatch.index) })
+      if (text[i] === '*' && text[i + 1] === '*') {
+        const endIndex = text.indexOf('**', i + 2)
+        if (endIndex !== -1) {
+          if (currentText) {
+            result.push({ text: currentText })
+            currentText = ''
+          }
+          result.push({ text: text.slice(i + 2, endIndex), bold: true })
+          i = endIndex + 2
+          continue
         }
-        parts.push({ text: boldMatch[1], bold: true })
-        remaining = remaining.substring(boldMatch.index + boldMatch[0].length)
-        continue
       }
 
-      // 斜体 *text* 或 _text_
-      const italicMatch = remaining.match(/[*_]([^*_]+)[*_]/)
-      if (italicMatch && italicMatch.index !== undefined) {
-        if (italicMatch.index > 0) {
-          parts.push({ text: remaining.substring(0, italicMatch.index) })
+      // 斜体 *text*（单个星号，且不是粗体）
+      if (text[i] === '*' && text[i + 1] !== '*') {
+        // 找下一个单独的星号
+        let j = i + 1
+        while (j < text.length) {
+          if (text[j] === '*' && text[j + 1] !== '*') {
+            // 确保不是粗体的开始
+            if (j > 0 && text[j - 1] !== '*') {
+              if (currentText) {
+                result.push({ text: currentText })
+                currentText = ''
+              }
+              result.push({ text: text.slice(i + 1, j), italic: true })
+              i = j + 1
+              break
+            }
+          }
+          j++
         }
-        parts.push({ text: italicMatch[1], italic: true })
-        remaining = remaining.substring(italicMatch.index + italicMatch[0].length)
-        continue
+        if (j < text.length) continue
       }
 
-      // 没有匹配，添加剩余文本
-      parts.push({ text: remaining })
-      break
+      // 下划线斜体 _text_
+      if (text[i] === '_') {
+        const endIndex = text.indexOf('_', i + 1)
+        if (endIndex !== -1 && endIndex > i + 1) {
+          if (currentText) {
+            result.push({ text: currentText })
+            currentText = ''
+          }
+          result.push({ text: text.slice(i + 1, endIndex), italic: true })
+          i = endIndex + 1
+          continue
+        }
+      }
+
+      currentText += text[i]
+      i++
     }
 
-    return parts.map((part, index) => {
-      let className = 'text-sm'
-      if (part.bold) className += ' font-semibold'
-      if (part.italic) className += ' italic'
-      if (part.code) className = 'text-xs bg-gray-100 dark:bg-gray-800 px-1 py-1 rounded font-mono'
+    if (currentText) {
+      result.push({ text: currentText })
+    }
+
+    return result.map((part, index) => {
+      let className = 'text-sm text-black dark:text-white'
+      if (part.bold) className = 'text-sm font-semibold text-black dark:text-white'
+      if (part.italic) className = 'text-sm italic text-black dark:text-white'
+      if (part.code) className = 'text-xs bg-gray-100 dark:bg-gray-800 px-1 py-1 rounded font-mono text-gray-700 dark:text-gray-300'
       
       return (
         <Text key={index} className={className}>
@@ -165,12 +201,12 @@ export function MarkdownRenderer({ content }: Props) {
         switch (node.type) {
           case 'header':
             const headerClass = node.level === 1 
-              ? 'text-xl font-bold mb-2' 
+              ? 'text-xl font-bold mb-2 text-black dark:text-white' 
               : node.level === 2 
-                ? 'text-lg font-bold mb-2' 
-                : 'text-base font-semibold mb-1'
+                ? 'text-lg font-bold mb-2 text-black dark:text-white' 
+                : 'text-base font-semibold mb-1 text-black dark:text-white'
             return (
-              <Text key={index} className={`block ${headerClass} text-black dark:text-white`}>
+              <Text key={index} className={`block ${headerClass}`}>
                 {node.content}
               </Text>
             )
@@ -211,4 +247,45 @@ export function MarkdownRenderer({ content }: Props) {
       })}
     </View>
   )
+}
+
+// 清理Markdown格式用于语音朗读
+export function cleanMarkdownForSpeech(text: string): string {
+  let result = text
+  
+  // 移除代码块
+  result = result.replace(/```[\s\S]*?```/g, '，代码块，')
+  
+  // 移除行内代码
+  result = result.replace(/`([^`]+)`/g, '$1')
+  
+  // 移除粗体标记
+  result = result.replace(/\*\*([^*]+)\*\*/g, '$1')
+  
+  // 移除斜体标记
+  result = result.replace(/\*([^*]+)\*/g, '$1')
+  result = result.replace(/_([^_]+)_/g, '$1')
+  
+  // 移除标题标记
+  result = result.replace(/^#{1,6}\s+/gm, '')
+  
+  // 移除列表标记
+  result = result.replace(/^[-*+]\s+/gm, '')
+  result = result.replace(/^\d+\.\s+/gm, '')
+  
+  // 处理多余标点
+  result = result.replace(/\*\*/g, '')
+  result = result.replace(/\*/g, '')
+  
+  // 处理连续换行
+  result = result.replace(/\n{2,}/g, '。')
+  result = result.replace(/\n/g, '，')
+  
+  // 清理多余标点
+  result = result.replace(/，+/g, '，')
+  result = result.replace(/。+/g, '。')
+  result = result.replace(/^，/, '')
+  result = result.replace(/^。/, '')
+  
+  return result.trim()
 }

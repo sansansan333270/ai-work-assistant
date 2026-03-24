@@ -1,20 +1,48 @@
 import { View, Text } from '@tarojs/components'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Taro from '@tarojs/taro'
-import { Sun, Moon, Check, ChevronLeft } from 'lucide-react-taro'
+import { Sun, Moon, Check, ChevronLeft, Volume2 } from 'lucide-react-taro'
 import { useThemeStore } from '@/store/theme'
 import { useModelStore } from '@/store/models'
 import { AI_MODELS } from '@/config/models'
 import './index.css'
 
+// 语音音色配置
+const voiceOptions = [
+  { id: 'default', name: '默认', description: '标准语速和音调' },
+  { id: 'friendly', name: '亲切', description: '温暖友好的声音' },
+  { id: 'professional', name: '专业', description: '稳重专业的语调' },
+  { id: 'lively', name: '活泼', description: '轻快活泼的节奏' },
+]
+
 export default function Settings() {
   const { theme, toggleTheme } = useThemeStore()
   const { currentModel, setCurrentModel } = useModelStore()
   const [autoPlay, setAutoPlay] = useState(true)
+  const [selectedVoice, setSelectedVoice] = useState('default')
+
+  useEffect(() => {
+    // 从localStorage读取设置
+    if (typeof window !== 'undefined') {
+      const savedVoice = localStorage.getItem('voiceSetting')
+      if (savedVoice) {
+        setSelectedVoice(savedVoice)
+      }
+    }
+  }, [])
 
   // 返回上一页
   const handleBack = () => {
     Taro.navigateBack()
+  }
+
+  // 选择音色
+  const handleSelectVoice = (voiceId: string) => {
+    setSelectedVoice(voiceId)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('voiceSetting', voiceId)
+    }
+    Taro.showToast({ title: '已保存', icon: 'success', duration: 1000 })
   }
 
   return (
@@ -116,8 +144,8 @@ export default function Settings() {
         {/* 语音设置 */}
         <View className="mb-6">
           <Text className="text-sm text-gray-500 mb-3">语音设置</Text>
-          <View className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4">
-            <View className="flex items-center justify-between">
+          <View className="bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden">
+            <View className="flex items-center justify-between p-4 border-b dark:border-gray-800">
               <Text className="text-black dark:text-white">自动播放回复</Text>
               <View 
                 className="w-12 h-6 rounded-full relative cursor-pointer"
@@ -131,6 +159,36 @@ export default function Settings() {
                     ${autoPlay ? 'translate-x-7' : 'translate-x-1'}
                   `}
                 />
+              </View>
+            </View>
+            
+            {/* 音色选择 */}
+            <View className="p-4">
+              <View className="flex items-center gap-2 mb-3">
+                <Volume2 size={16} color="#8C8C8C" />
+                <Text className="text-black dark:text-white">朗读音色</Text>
+              </View>
+              <View className="grid grid-cols-2 gap-2">
+                {voiceOptions.map((voice) => (
+                  <View 
+                    key={voice.id}
+                    className={`
+                      p-3 rounded-xl cursor-pointer
+                      ${selectedVoice === voice.id 
+                        ? 'bg-blue-500' 
+                        : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
+                      }
+                    `}
+                    onClick={() => handleSelectVoice(voice.id)}
+                  >
+                    <Text className={`text-sm font-medium ${selectedVoice === voice.id ? 'text-white' : 'text-black dark:text-white'}`}>
+                      {voice.name}
+                    </Text>
+                    <Text className={`text-xs mt-1 ${selectedVoice === voice.id ? 'text-blue-100' : 'text-gray-500'}`}>
+                      {voice.description}
+                    </Text>
+                  </View>
+                ))}
               </View>
             </View>
           </View>
