@@ -6,6 +6,12 @@
       "zip_url": "https://lightmake.site/api/v1/download?slug=qwen-tts",
       "source": "skillhub",
       "version": "1.0.0"
+    },
+    "coze-voice-gen": {
+      "name": "Coze Voice Gen",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=coze-voice-gen",
+      "source": "skillhub",
+      "version": "1.0.0"
     }
   }
 }

@@ -7,12 +7,12 @@ import { useModelStore } from '@/store/models'
 import { AI_MODELS } from '@/config/models'
 import './index.css'
 
-// 语音音色配置
+// 语音音色配置（扣子TTS音色）
 const voiceOptions = [
-  { id: 'default', name: '默认', description: '标准语速和音调' },
-  { id: 'friendly', name: '亲切', description: '温暖友好的声音' },
-  { id: 'professional', name: '专业', description: '稳重专业的语调' },
-  { id: 'lively', name: '活泼', description: '轻快活泼的节奏' },
+  { id: 'default', name: '小荷', description: '默认女声，温柔自然' },
+  { id: 'friendly', name: '雪阿姨', description: '儿童故事风格' },
+  { id: 'professional', name: '云舟', description: '标准男声' },
+  { id: 'lively', name: '米仔', description: '视频配音女声' },
 ]
 
 export default function Settings() {

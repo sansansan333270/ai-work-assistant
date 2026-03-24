@@ -1,6 +1,7 @@
 import { View, Text, Image } from '@tarojs/components'
 import { Volume2, VolumeX, Bookmark } from 'lucide-react-taro'
 import { useState, useEffect } from 'react'
+import Taro from '@tarojs/taro'
 import { Network } from '@/network'
 import { MarkdownRenderer, cleanMarkdownForSpeech } from './MarkdownRenderer'
 
@@ -15,78 +16,89 @@ interface Props {
   message: Message
 }
 
-// 语音音色配置
-const voiceOptions = [
-  { id: 'default', name: '默认', pitch: 1, rate: 1 },
-  { id: 'friendly', name: '亲切', pitch: 1.1, rate: 0.9 },
-  { id: 'professional', name: '专业', pitch: 1, rate: 0.95 },
-  { id: 'lively', name: '活泼', pitch: 1.2, rate: 1.1 },
-]
+// 扣子TTS音色映射
+const voiceMap: Record<string, string> = {
+  default: 'zh_female_xiaohe_uranus_bigtts',
+  friendly: 'zh_female_xueayi_saturn_bigtts',
+  professional: 'zh_male_m191_uranus_bigtts',
+  lively: 'zh_female_mizai_saturn_bigtts',
+}
 
 export function ChatBubble({ message }: Props) {
   const isUser = message.from === 'user'
   const isImage = message.type === 'image'
   const [saving, setSaving] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
-  const [selectedVoice, setSelectedVoice] = useState('default')
+  const [audioContext, setAudioContext] = useState<any>(null)
 
   useEffect(() => {
-    // 从localStorage读取音色设置
+    // 初始化音频上下文
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('voiceSetting')
-      if (saved) {
-        setSelectedVoice(saved)
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext
+      if (AudioContext) {
+        setAudioContext(new AudioContext())
       }
     }
     
-    // 监听语音结束
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      speechSynthesis.onvoiceschanged = () => {
-        // 语音列表加载完成
+    return () => {
+      // 清理
+      if (audioContext) {
+        audioContext.close()
       }
     }
   }, [])
 
-  const handlePlayVoice = () => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      return
-    }
-
-    // 如果正在朗读，停止
+  const handlePlayVoice = async () => {
     if (isSpeaking) {
-      window.speechSynthesis.cancel()
       setIsSpeaking(false)
+      // 停止音频播放
+      if (audioContext) {
+        audioContext.close()
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext
+        setAudioContext(new AudioContext())
+      }
       return
     }
 
-    // 清理Markdown格式
-    const cleanText = cleanMarkdownForSpeech(message.content)
-    
-    const utterance = new SpeechSynthesisUtterance(cleanText)
-    utterance.lang = 'zh-CN'
-    
-    // 应用音色设置
-    const voiceSetting = voiceOptions.find(v => v.id === selectedVoice) || voiceOptions[0]
-    utterance.pitch = voiceSetting.pitch
-    utterance.rate = voiceSetting.rate
-    
-    // 尝试选择中文语音
-    const voices = window.speechSynthesis.getVoices()
-    const zhVoice = voices.find(v => v.lang.includes('zh'))
-    if (zhVoice) {
-      utterance.voice = zhVoice
-    }
-    
-    utterance.onend = () => {
+    try {
+      setIsSpeaking(true)
+      
+      // 获取用户选择的音色
+      const voiceSetting = typeof window !== 'undefined' 
+        ? localStorage.getItem('voiceSetting') || 'default' 
+        : 'default'
+      const speaker = voiceMap[voiceSetting] || voiceMap.default
+      
+      // 清理Markdown格式
+      const cleanText = cleanMarkdownForSpeech(message.content)
+      
+      // 调用扣子TTS接口
+      const response = await Network.request({
+        url: '/api/tts/synthesize',
+        method: 'POST',
+        data: {
+          text: cleanText,
+          speaker,
+        },
+      })
+
+      const data = response.data as { data?: { audioUrl?: string }; code?: number }
+      
+      if (data?.data?.audioUrl) {
+        // 播放音频
+        const audio = new Audio(data.data.audioUrl)
+        audio.onended = () => setIsSpeaking(false)
+        audio.onerror = () => setIsSpeaking(false)
+        await audio.play()
+      } else {
+        setIsSpeaking(false)
+        Taro.showToast({ title: '语音合成失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('TTS error:', error)
       setIsSpeaking(false)
+      Taro.showToast({ title: '语音合成失败', icon: 'none' })
     }
-    
-    utterance.onerror = () => {
-      setIsSpeaking(false)
-    }
-    
-    setIsSpeaking(true)
-    window.speechSynthesis.speak(utterance)
   }
 
   const handleSaveToNote = async () => {
@@ -106,10 +118,10 @@ export function ChatBubble({ message }: Props) {
         }
       })
       
-      alert('已保存到笔记本')
+      Taro.showToast({ title: '已保存到笔记本', icon: 'success' })
     } catch (error) {
       console.error('Failed to save note:', error)
-      alert('保存失败，请重试')
+      Taro.showToast({ title: '保存失败', icon: 'none' })
     } finally {
       setSaving(false)
     }
@@ -173,6 +185,3 @@ export function ChatBubble({ message }: Props) {
     </View>
   )
 }
-
-// 导出音色选项供设置页面使用
-export { voiceOptions }
