@@ -21,7 +21,7 @@ const iconComponents: Record<string, any> = { Sparkles, Code, Pen, Zap, ChartBar
 
 export default function Chat() {
   const { theme } = useThemeStore()
-  const { messages, isLoading, thinking, addMessage, setLoading, setThinking } = useChatStore()
+  const { messages, isLoading, addMessage, setLoading } = useChatStore()
   const { currentModel, chatMode, setChatMode } = useModelStore()
   const { skills, fetchSkills } = useSkillsStore()
   const [inputText, setInputText] = useState('')
@@ -32,6 +32,8 @@ export default function Chat() {
   const [voiceReplyEnabled, setVoiceReplyEnabled] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [activeSkill, setActiveSkill] = useState<{ id: number; name: string; prompt: string } | null>(null)
+  const [isThinking, setIsThinking] = useState(false)
+  const [lastThinking, setLastThinking] = useState('')
   
   const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
   const recorderManagerRef = useRef<Taro.RecorderManager | null>(null)
@@ -115,6 +117,9 @@ export default function Chat() {
     if (!inputText.trim() || isLoading) return
     const userMessage = inputText.trim()
     
+    // 清空上一次的思考内容
+    setLastThinking('')
+    
     // 如果有激活的技能，组合提示词
     const finalMessage = activeSkill 
       ? `${activeSkill.prompt}\n\n用户输入：${userMessage}` 
@@ -129,6 +134,12 @@ export default function Chat() {
     setInputText('')
     setShowTextInput(false)
     setLoading(true)
+    
+    // 深度模式下显示思考状态
+    if (chatMode === 'thinking' && currentModel.supportsThinking) {
+      setIsThinking(true)
+      setLastThinking('')
+    }
 
     try {
       const response = await Network.request({
@@ -147,7 +158,10 @@ export default function Chat() {
         await Network.request({ url: `/api/skills/${activeSkill.id}/use`, method: 'POST' })
       }
 
-      if (response.data?.thinking) setThinking(response.data.thinking)
+      // 保存思考内容
+      if (response.data?.thinking) {
+        setLastThinking(response.data.thinking)
+      }
 
       const aiReply = response.data?.answer || '收到，正在为你处理...'
       addMessage({ type: 'text', content: aiReply, from: 'ai' })
@@ -162,7 +176,7 @@ export default function Chat() {
       addMessage({ type: 'text', content: '抱歉，出现了错误，请稍后重试。', from: 'ai' })
     } finally {
       setLoading(false)
-      setThinking('')
+      setIsThinking(false)
     }
   }
 
@@ -244,13 +258,19 @@ export default function Chat() {
 
       {/* 对话内容 */}
       <ScrollView className="pt-16 pb-40 px-4" scrollY scrollIntoView={messages.length > 0 ? `msg-${messages[messages.length - 1].id}` : ''}>
-        {thinking && <ThinkingMessage thinking={thinking} />}
+        {/* 思考过程展示 */}
+        {(isThinking || lastThinking) && (
+          <ThinkingMessage thinking={lastThinking} isThinking={isThinking} />
+        )}
+        
         {messages.map((msg) => (
           <View key={msg.id} id={`msg-${msg.id}`}>
             <ChatBubble message={msg} />
           </View>
         ))}
-        {isLoading && (
+        
+        {/* 加载中提示（非深度模式） */}
+        {isLoading && !isThinking && (
           <View className="flex justify-start mb-4">
             <Text className="block text-gray-500 text-sm">正在思考...</Text>
           </View>
