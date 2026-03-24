@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { AIModel, AI_MODELS } from '@/config/models'
+import { AIModel, AI_MODELS, DEFAULT_MODEL } from '@/config/models'
 
 interface ModelState {
   currentModel: AIModel
@@ -14,7 +14,7 @@ interface ModelState {
 export const useModelStore = create<ModelState>()(
   persist(
     (set, get) => ({
-      currentModel: AI_MODELS[0], // 默认豆包
+      currentModel: DEFAULT_MODEL, // 默认DeepSeek
       models: AI_MODELS,
       chatMode: 'standard',
       

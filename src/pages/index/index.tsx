@@ -1,14 +1,14 @@
 import { View, Text, ScrollView, Input } from '@tarojs/components'
 import { useState, useEffect, useRef } from 'react'
+import Taro from '@tarojs/taro'
 import { ChatBubble } from '@/components/ChatBubble'
 import { ThinkingMessage } from '@/components/ThinkingMessage'
 import { Sidebar } from '@/components/Sidebar'
-import { ModelSelector } from '@/components/ModelSelector'
 import { ChatModeSelector } from '@/components/ChatModeSelector'
 import { useThemeStore } from '@/store/theme'
 import { useChatStore } from '@/store/chat'
 import { useModelStore } from '@/store/models'
-import { Menu, Send, Mic, Keyboard } from 'lucide-react-taro'
+import { Menu, Mic, FileText, MicOff } from 'lucide-react-taro'
 import { Network } from '@/network'
 import './index.css'
 
@@ -18,11 +18,10 @@ export default function Chat() {
   const { currentModel, chatMode } = useModelStore()
   const [inputText, setInputText] = useState('')
   const [showSidebar, setShowSidebar] = useState(false)
-  const [inputMode, setInputMode] = useState<'text' | 'voice'>('text')
+  const [voiceEnabled, setVoiceEnabled] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const recognitionRef = useRef<any>(null)
   const isRecordingRef = useRef(false)
-  const voiceButtonRef = useRef<HTMLDivElement | null>(null)
 
   // 同步isRecording状态到ref
   useEffect(() => {
@@ -41,11 +40,10 @@ export default function Chat() {
   }, [])
 
   useEffect(() => {
-    // 初始化语音识别（仅在H5环境）
-    if (typeof window !== 'undefined') {
+    // 初始化语音识别（仅在H5环境且语音启用时）
+    if (typeof window !== 'undefined' && voiceEnabled) {
       const SpeechRecognition = (window as any).webkitSpeechRecognition || 
                                 (window as any).SpeechRecognition
-      console.log('SpeechRecognition available:', !!SpeechRecognition)
       
       if (SpeechRecognition) {
         const recognitionInstance = new SpeechRecognition()
@@ -54,79 +52,23 @@ export default function Chat() {
         recognitionInstance.interimResults = false
         
         recognitionInstance.onresult = (event: any) => {
-          console.log('Speech recognition result:', event.results)
           const transcript = event.results[0][0].transcript
           handleVoiceInput(transcript)
           setIsRecording(false)
         }
         
-        recognitionInstance.onerror = (event: any) => {
-          console.error('Speech recognition error:', event.error)
+        recognitionInstance.onerror = () => {
           setIsRecording(false)
         }
         
         recognitionInstance.onend = () => {
-          console.log('Speech recognition ended')
           setIsRecording(false)
-        }
-        
-        recognitionInstance.onstart = () => {
-          console.log('Speech recognition started successfully')
         }
         
         recognitionRef.current = recognitionInstance
       }
     }
-  }, [])
-
-  useEffect(() => {
-    // 为桌面环境添加鼠标事件支持
-    if (typeof window !== 'undefined' && typeof document !== 'undefined' && inputMode === 'voice') {
-      // 延迟获取元素，确保DOM已经渲染
-      const timer = setTimeout(() => {
-        const voiceButton = document.getElementById('voice-button')
-        console.log('voiceButton element:', voiceButton)
-        
-        if (voiceButton) {
-          voiceButtonRef.current = voiceButton as HTMLDivElement
-          
-          const handleMouseDown = (e: MouseEvent) => {
-            e.preventDefault()
-            console.log('=== mousedown ===')
-            handleVoicePress()
-          }
-          const handleMouseUp = (e: MouseEvent) => {
-            e.preventDefault()
-            console.log('=== mouseup ===')
-            handleVoiceRelease()
-          }
-          const handleMouseLeave = () => {
-            console.log('=== mouseleave, isRecording:', isRecordingRef.current)
-            if (isRecordingRef.current) {
-              handleVoiceRelease()
-            }
-          }
-
-          voiceButton.addEventListener('mousedown', handleMouseDown)
-          voiceButton.addEventListener('mouseup', handleMouseUp)
-          voiceButton.addEventListener('mouseleave', handleMouseLeave)
-          console.log('Mouse event listeners added')
-
-          // 存储清理函数
-          const cleanup = () => {
-            voiceButton.removeEventListener('mousedown', handleMouseDown)
-            voiceButton.removeEventListener('mouseup', handleMouseUp)
-            voiceButton.removeEventListener('mouseleave', handleMouseLeave)
-          }
-          
-          // 保存cleanup函数以便在组件卸载或模式切换时调用
-          ;(voiceButtonRef.current as any).cleanup = cleanup
-        }
-      }, 100)
-
-      return () => clearTimeout(timer)
-    }
-  }, [inputMode])
+  }, [voiceEnabled])
 
   // 发送消息
   const handleSend = async () => {
@@ -138,7 +80,6 @@ export default function Chat() {
     setLoading(true)
 
     try {
-      // 调用AI接口
       const response = await Network.request({
         url: '/api/ai/chat',
         method: 'POST',
@@ -146,16 +87,14 @@ export default function Chat() {
           message: userMessage,
           model: currentModel.id,
           mode: chatMode,
-          context: messages.slice(-10) // 最近10条消息作为上下文
+          context: messages.slice(-10)
         }
       })
 
-      // 如果有思考过程，显示思考内容
       if (response.data?.thinking) {
         setThinking(response.data.thinking)
       }
 
-      // 添加AI回复
       addMessage({
         type: 'text',
         content: response.data?.answer || '收到，正在为你处理...',
@@ -176,13 +115,9 @@ export default function Chat() {
 
   const handleVoiceInput = (text: string) => {
     setInputText(text)
-    // 直接发送语音识别的结果
     if (text.trim()) {
       addMessage({ type: 'text', content: text, from: 'user' })
-      setInputText('')
       setLoading(true)
-      
-      // 调用AI接口
       handleSendVoice(text)
     }
   }
@@ -223,28 +158,21 @@ export default function Chat() {
   }
 
   const handleVoicePress = () => {
-    console.log('handleVoicePress called, recognitionRef:', recognitionRef.current)
     if (recognitionRef.current) {
       try {
         recognitionRef.current.start()
         setIsRecording(true)
-        console.log('Voice recognition started')
       } catch (error) {
         console.error('Voice recognition error:', error)
         setIsRecording(false)
       }
-    } else {
-      console.log('No speech recognition available')
-      setIsRecording(false)
     }
   }
 
   const handleVoiceRelease = () => {
-    console.log('handleVoiceRelease called')
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop()
-        console.log('Voice recognition stopped')
       } catch (error) {
         console.error('Voice recognition error:', error)
       }
@@ -252,19 +180,55 @@ export default function Chat() {
     setIsRecording(false)
   }
 
+  // 跳转到文档工作台
+  const goToDocument = () => {
+    Taro.navigateTo({ url: '/pages/document/index' })
+  }
+
   return (
     <View className={`min-h-screen bg-white dark:bg-black ${theme === 'dark' ? 'dark' : ''}`}>
-      {/* 顶部导航 - 透明背景 */}
+      {/* 顶部导航 */}
       <View className="fixed top-0 left-0 right-0 z-50">
         <View className="flex items-center justify-between h-14 px-4">
+          {/* 左侧菜单按钮 */}
           <View 
             onClick={() => setShowSidebar(true)} 
             className="w-10 h-10 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center shadow-sm cursor-pointer"
           >
             <Menu size={20} color="#1F1F1F" />
           </View>
-          <ModelSelector />
-          <View className="w-10" />
+          
+          {/* 中间标题 */}
+          <Text className="text-base font-medium text-black dark:text-white">
+            {currentModel.name}
+          </Text>
+          
+          {/* 右侧按钮组 */}
+          <View className="flex items-center gap-2">
+            {/* 文档工作台快捷入口 */}
+            <View 
+              onClick={goToDocument}
+              className="w-10 h-10 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center shadow-sm cursor-pointer"
+            >
+              <FileText size={20} color="#8C8C8C" />
+            </View>
+            
+            {/* 语音开关按钮 */}
+            <View 
+              onClick={() => setVoiceEnabled(!voiceEnabled)}
+              className={`w-10 h-10 rounded-full flex items-center justify-center shadow-sm cursor-pointer ${
+                voiceEnabled 
+                  ? 'bg-blue-500' 
+                  : 'bg-white dark:bg-gray-900'
+              }`}
+            >
+              {voiceEnabled ? (
+                <Mic size={20} color="#FFFFFF" />
+              ) : (
+                <MicOff size={20} color="#8C8C8C" />
+              )}
+            </View>
+          </View>
         </View>
       </View>
 
@@ -304,20 +268,35 @@ export default function Chat() {
       {/* 底部输入 */}
       <View className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black p-4">
         <View className="flex items-center gap-3">
-          {/* 左侧切换按钮 */}
-          <View 
-            className="w-10 h-10 flex items-center justify-center cursor-pointer"
-            onClick={() => setInputMode(inputMode === 'text' ? 'voice' : 'text')}
-          >
-            {inputMode === 'text' ? (
-              <Mic size={22} color="#8C8C8C" />
-            ) : (
-              <Keyboard size={22} color="#8C8C8C" />
-            )}
-          </View>
-
-          {/* 中间区域 */}
-          {inputMode === 'text' ? (
+          {voiceEnabled ? (
+            // 语音输入模式
+            <View 
+              className={`
+                flex-1 h-12 flex items-center justify-center rounded-full cursor-pointer select-none
+                ${isRecording 
+                  ? 'bg-red-500' 
+                  : 'bg-gray-100 dark:bg-gray-900'
+                }
+              `}
+              style={{ touchAction: 'none' }}
+              onTouchStart={(e) => {
+                e.preventDefault()
+                handleVoicePress()
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault()
+                handleVoiceRelease()
+              }}
+              onTouchCancel={(e) => {
+                e.preventDefault()
+                handleVoiceRelease()
+              }}
+            >
+              <Text className={`text-base font-medium ${isRecording ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+                {isRecording ? '松开发送' : '按住说话'}
+              </Text>
+            </View>
+          ) : (
             // 文本输入模式
             <>
               <View className="flex-1 bg-gray-100 dark:bg-gray-900 rounded-full px-4 py-2">
@@ -334,44 +313,9 @@ export default function Chat() {
                 className="bg-blue-500 rounded-full w-10 h-10 flex items-center justify-center cursor-pointer"
                 onClick={handleSend}
               >
-                <Send size={18} color="#FFFFFF" />
+                <Text className="text-white text-lg">发送</Text>
               </View>
             </>
-          ) : (
-            // 语音输入模式
-            <View 
-              id="voice-button"
-              className={`
-                flex-1 h-12 flex items-center justify-center rounded-full cursor-pointer select-none
-                ${isRecording 
-                  ? 'bg-red-500' 
-                  : 'bg-gray-100 dark:bg-gray-900'
-                }
-              `}
-              style={{ touchAction: 'none' }}
-              onTouchStart={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                console.log('=== onTouchStart ===')
-                handleVoicePress()
-              }}
-              onTouchEnd={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                console.log('=== onTouchEnd ===')
-                handleVoiceRelease()
-              }}
-              onTouchCancel={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                console.log('=== onTouchCancel ===')
-                handleVoiceRelease()
-              }}
-            >
-              <Text className={`text-base font-medium ${isRecording ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
-                {isRecording ? '松开发送' : '按住说话'}
-              </Text>
-            </View>
           )}
         </View>
       </View>

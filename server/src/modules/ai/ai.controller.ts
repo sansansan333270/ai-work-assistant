@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common'
+import { Controller, Post, Body, HttpException, HttpStatus } from '@nestjs/common'
 import { AiService } from './ai.service'
 
 @Controller('ai')
@@ -45,11 +45,10 @@ export class AiController {
 
     try {
       const result = await this.aiService.generateImage(body.prompt, body.options)
-      console.log('Image generated:', result.imageUrl || result.url)
       return result
     } catch (error) {
       console.error('Image generation error:', error)
-      throw error
+      throw new HttpException('Image generation requires additional API configuration', HttpStatus.NOT_IMPLEMENTED)
     }
   }
 }
