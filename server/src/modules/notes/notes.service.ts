@@ -1,23 +1,16 @@
 import { Injectable } from '@nestjs/common'
 import { eq, and, desc, like, or } from 'drizzle-orm'
-import { EmbeddingClient } from 'coze-coding-dev-sdk'
 import { db, schema } from '@/database'
 import type { NewNote, Note } from '@/database/schema'
 
 @Injectable()
 export class NotesService {
-  private embeddingClient: EmbeddingClient
-
-  constructor() {
-    this.embeddingClient = new EmbeddingClient()
-  }
-
   // 创建笔记
   async createNote(note: NewNote): Promise<Note> {
     const result = await db.insert(schema.notes).values(note).returning()
     const savedNote = result[0]
     
-    // 异步整理到知识库
+    // 异步整理到知识库（不使用向量）
     this.addToKnowledgeBase(savedNote).catch(err => {
       console.error('Failed to add to knowledge base:', err)
     })
@@ -169,13 +162,9 @@ export class NotesService {
     return Array.from(tagSet).sort()
   }
 
-  // 将笔记整理到知识库
+  // 将笔记整理到知识库（不使用向量，仅保存文本）
   private async addToKnowledgeBase(note: Note): Promise<void> {
     try {
-      // 生成向量
-      const textToEmbed = `${note.title}\n${note.content}`
-      const embedding = await this.embeddingClient.embedText(textToEmbed)
-      
       // 检查是否已存在关联的知识条目
       const existing = await db
         .select()
@@ -192,7 +181,7 @@ export class NotesService {
             content: note.content,
             category: note.category || 'default',
             tags: note.tags,
-            embedding: JSON.stringify(embedding),
+            // 不存储向量
             updatedAt: new Date(),
           })
           .where(eq(schema.knowledgeItems.id, existing[0].id))
@@ -207,7 +196,7 @@ export class NotesService {
           content: note.content,
           category: note.category || 'default',
           tags: note.tags,
-          embedding: JSON.stringify(embedding),
+          // 不存储向量
           isPublic: false,
         })
         

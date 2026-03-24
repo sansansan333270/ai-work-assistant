@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common'
-import { TTSClient, Config, APIError } from 'coze-coding-dev-sdk'
 
 type AudioFormat = 'mp3' | 'pcm' | 'ogg_opus'
 type SampleRate = 8000 | 16000 | 22050 | 24000 | 32000 | 44100 | 48000
@@ -13,7 +12,7 @@ interface TTSOptions {
   loudnessRate?: number
 }
 
-// 可用音色列表（仅保留经过验证的音色ID）
+// 可用音色列表（保留用于未来扩展）
 const AVAILABLE_VOICES = [
   // 女声系列
   { id: 'zh_female_xiaohe_uranus_bigtts', name: '小荷', description: '温柔自然', gender: 'female' },
@@ -30,53 +29,16 @@ const AVAILABLE_VOICES = [
 
 @Injectable()
 export class TtsService {
-  private client: TTSClient
-
-  constructor() {
-    const config = new Config()
-    this.client = new TTSClient(config)
-  }
-
   // 获取可用音色列表
   getVoices() {
     return AVAILABLE_VOICES
   }
 
-  // 文本转语音
+  // 文本转语音 - 暂时返回错误提示
   async synthesize(options: TTSOptions) {
-    const {
-      text,
-      speaker = 'zh_female_xiaohe_uranus_bigtts',
-      audioFormat = 'mp3',
-      sampleRate = 24000,
-      speechRate = 0,
-      loudnessRate = 0,
-    } = options
-
-    try {
-      const response = await this.client.synthesize({
-        uid: `tts-${Date.now()}`,
-        text,
-        speaker,
-        audioFormat,
-        sampleRate,
-        speechRate,
-        loudnessRate,
-      })
-
-      return {
-        success: true,
-        audioUrl: response.audioUri,
-      }
-    } catch (error) {
-      if (error instanceof APIError) {
-        console.error('TTS API Error:', error.message, error.statusCode)
-        return {
-          success: false,
-          error: error.message,
-        }
-      }
-      throw error
+    return {
+      success: false,
+      error: '语音合成功能暂未配置。如需使用，请配置火山引擎 TTS 服务或使用浏览器内置语音合成。',
     }
   }
 }

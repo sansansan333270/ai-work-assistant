@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { UploadService } from '../upload/upload.service'
 import { db, schema } from '@/database'
-import { eq, and, desc } from 'drizzle-orm'
+import { eq, and, desc, like, or } from 'drizzle-orm'
 
 // 模型配置映射 - 使用各平台原生 API
 const MODEL_CONFIG: Record<string, { 
@@ -487,11 +487,34 @@ export class AiService {
 
   private async searchProjectKnowledge(projectId: number, query: string): Promise<KnowledgeItem[]> {
     try {
+      // 使用关键词搜索替代向量搜索
+      const keywords = query.split(/\s+/).filter(k => k.length > 1).slice(0, 5)
+      
+      if (keywords.length === 0) {
+        const items = await db
+          .select()
+          .from(schema.knowledgeItems)
+          .where(eq(schema.knowledgeItems.projectId, projectId))
+          .limit(50)
+        return items
+      }
+
+      // 构建搜索条件
+      const searchConditions = keywords.map(keyword => 
+        or(
+          like(schema.knowledgeItems.title, `%${keyword}%`),
+          like(schema.knowledgeItems.content, `%${keyword}%`)
+        )
+      )
+
       const items = await db
         .select()
         .from(schema.knowledgeItems)
-        .where(eq(schema.knowledgeItems.projectId, projectId))
-        .limit(50)
+        .where(and(
+          eq(schema.knowledgeItems.projectId, projectId),
+          or(...searchConditions)
+        ))
+        .limit(10)
 
       return items
     } catch (error) {
@@ -521,14 +544,29 @@ export class AiService {
 
   private async searchKnowledge(query: string): Promise<KnowledgeItem[]> {
     try {
+      // 使用关键词搜索替代向量搜索
+      const keywords = query.split(/\s+/).filter(k => k.length > 1).slice(0, 5)
+      
+      if (keywords.length === 0) {
+        return []
+      }
+
+      // 构建搜索条件：标题或内容包含任一关键词
+      const searchConditions = keywords.map(keyword => 
+        or(
+          like(schema.knowledgeItems.title, `%${keyword}%`),
+          like(schema.knowledgeItems.content, `%${keyword}%`)
+        )
+      )
+
       const items = await db
         .select()
         .from(schema.knowledgeItems)
         .where(and(
           eq(schema.knowledgeItems.userId, 'default-user'),
-          eq(schema.knowledgeItems.projectId, null as any)
+          or(...searchConditions)
         ))
-        .limit(100)
+        .limit(10)
 
       return items
     } catch (error) {

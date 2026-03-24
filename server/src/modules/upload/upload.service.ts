@@ -1,46 +1,67 @@
 import { Injectable } from '@nestjs/common'
-import { S3Storage } from 'coze-coding-dev-sdk'
+import * as fs from 'fs'
+import * as path from 'path'
 
 @Injectable()
 export class UploadService {
-  private storage: S3Storage
+  private uploadDir = path.join(process.cwd(), 'uploads')
 
   constructor() {
-    this.storage = new S3Storage({
-      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
-      accessKey: '',
-      secretKey: '',
-      bucketName: process.env.COZE_BUCKET_NAME,
-      region: 'cn-beijing',
-    })
+    // 确保上传目录存在
+    if (!fs.existsSync(this.uploadDir)) {
+      fs.mkdirSync(this.uploadDir, { recursive: true })
+    }
   }
 
-  // 上传文件
+  // 上传文件到本地存储
   async uploadFile(file: Express.Multer.File): Promise<{ key: string; url: string }> {
-    const key = await this.storage.uploadFile({
-      fileContent: file.buffer,
-      fileName: `uploads/${Date.now()}_${file.originalname}`,
-      contentType: file.mimetype,
-    })
+    const timestamp = Date.now()
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const key = `uploads/${timestamp}_${safeName}`
+    const filePath = path.join(this.uploadDir, `${timestamp}_${safeName}`)
 
-    const url = await this.storage.generatePresignedUrl({
-      key,
-      expireTime: 86400 * 7, // 7天有效期
-    })
+    // 写入文件
+    fs.writeFileSync(filePath, file.buffer)
+
+    // 返回相对路径作为 key，URL 用于访问
+    const url = `/uploads/${timestamp}_${safeName}`
 
     return { key, url }
   }
 
   // 读取文件内容
   async readFile(key: string): Promise<Buffer> {
-    return this.storage.readFile({ fileKey: key })
+    // key 格式: uploads/timestamp_filename
+    const fileName = key.replace('uploads/', '')
+    const filePath = path.join(this.uploadDir, fileName)
+    
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`File not found: ${key}`)
+    }
+    
+    return fs.readFileSync(filePath)
   }
 
   // 生成访问URL
   async getFileUrl(key: string): Promise<string> {
-    return this.storage.generatePresignedUrl({
-      key,
-      expireTime: 86400,
-    })
+    const fileName = key.replace('uploads/', '')
+    return `/uploads/${fileName}`
+  }
+
+  // 删除文件
+  async deleteFile(key: string): Promise<void> {
+    const fileName = key.replace('uploads/', '')
+    const filePath = path.join(this.uploadDir, fileName)
+    
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath)
+    }
+  }
+
+  // 检查文件是否存在
+  async fileExists(key: string): Promise<boolean> {
+    const fileName = key.replace('uploads/', '')
+    const filePath = path.join(this.uploadDir, fileName)
+    return fs.existsSync(filePath)
   }
 }
