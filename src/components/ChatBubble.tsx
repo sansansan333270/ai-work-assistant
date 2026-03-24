@@ -183,7 +183,7 @@ export function ChatBubble({ message, autoPlay = false }: Props) {
     return (
       <View className="flex justify-end mb-4">
         <View 
-          className="px-4 py-3 max-w-[80%] bg-blue-500"
+          className="px-4 py-3 max-w-[80%] bg-green-500"
           style={{
             borderTopLeftRadius: 16,
             borderBottomLeftRadius: 16,
@@ -203,18 +203,18 @@ export function ChatBubble({ message, autoPlay = false }: Props) {
       <View className="w-full">
         <MarkdownRenderer content={message.content} />
         <View className="flex items-center gap-3 mt-3">
-          <View onClick={handlePlayVoice} className="flex items-center gap-1 cursor-pointer">
+          <View onClick={handlePlayVoice} className="flex items-center gap-1 cursor-pointer active:scale-95 transition-transform duration-150">
             {isSpeaking ? (
-              <VolumeX size={14} color="#1890FF" />
+              <VolumeX size={14} color="#22C55E" />
             ) : (
               <Volume2 size={14} color="#8C8C8C" />
             )}
-            <Text className={`text-xs ${isSpeaking ? 'text-blue-500' : 'text-gray-500'}`}>
+            <Text className={`text-xs ${isSpeaking ? 'text-green-500' : 'text-gray-500'}`}>
               {loading ? '加载中...' : isSpeaking ? '停止' : '朗读'}
             </Text>
           </View>
-          <View onClick={handleSaveToNote} className="flex items-center gap-1 cursor-pointer">
-            <Bookmark size={14} color={saving ? '#3B82F6' : '#8C8C8C'} />
+          <View onClick={handleSaveToNote} className="flex items-center gap-1 cursor-pointer active:scale-95 transition-transform duration-150">
+            <Bookmark size={14} color={saving ? '#22C55E' : '#8C8C8C'} />
             <Text className="text-xs text-gray-500">保存</Text>
           </View>
         </View>

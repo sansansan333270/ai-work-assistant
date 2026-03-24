@@ -188,7 +188,7 @@ export default function NotebookPage() {
             </View>
             <View 
               onClick={handleSearch}
-              className="bg-blue-500 px-4 py-2 rounded-xl cursor-pointer active:opacity-80"
+              className="bg-green-500 px-4 py-2 rounded-xl cursor-pointer active:scale-95 transition-transform duration-150"
             >
               <Text className="text-white text-sm">搜索</Text>
             </View>
@@ -199,9 +199,9 @@ export default function NotebookPage() {
       {/* 状态标签切换 */}
       <View className="flex flex-row gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-800">
         <View
-          className={`px-4 py-2 rounded-full cursor-pointer ${
+          className={`px-4 py-2 rounded-full cursor-pointer active:scale-95 transition-transform duration-150 ${
             activeTab === 'all'
-              ? 'bg-blue-500'
+              ? 'bg-green-500'
               : 'bg-gray-100 dark:bg-gray-900'
           }`}
           onClick={() => setActiveTab('all')}
@@ -211,9 +211,9 @@ export default function NotebookPage() {
           </Text>
         </View>
         <View
-          className={`px-4 py-2 rounded-full cursor-pointer ${
+          className={`px-4 py-2 rounded-full cursor-pointer active:scale-95 transition-transform duration-150 ${
             activeTab === 'starred'
-              ? 'bg-blue-500'
+              ? 'bg-green-500'
               : 'bg-gray-100 dark:bg-gray-900'
           }`}
           onClick={() => setActiveTab('starred')}
@@ -223,9 +223,9 @@ export default function NotebookPage() {
           </Text>
         </View>
         <View
-          className={`px-4 py-2 rounded-full cursor-pointer ${
+          className={`px-4 py-2 rounded-full cursor-pointer active:scale-95 transition-transform duration-150 ${
             activeTab === 'archived'
-              ? 'bg-blue-500'
+              ? 'bg-green-500'
               : 'bg-gray-100 dark:bg-gray-900'
           }`}
           onClick={() => setActiveTab('archived')}
@@ -263,9 +263,9 @@ export default function NotebookPage() {
           <View className="flex flex-row gap-2 whitespace-nowrap inline-flex">
             <View
               onClick={() => setSelectedTag(null)}
-              className={`px-3 py-1 rounded-full cursor-pointer flex-shrink-0 ${
+              className={`px-3 py-1 rounded-full cursor-pointer active:scale-95 transition-transform duration-150 flex-shrink-0 ${
                 selectedTag === null
-                  ? 'bg-blue-500'
+                  ? 'bg-green-500'
                   : 'bg-gray-100 dark:bg-gray-900'
               }`}
             >
@@ -277,9 +277,9 @@ export default function NotebookPage() {
               <View
                 key={tag}
                 onClick={() => setSelectedTag(tag)}
-                className={`px-3 py-1 rounded-full cursor-pointer flex-shrink-0 ${
+                className={`px-3 py-1 rounded-full cursor-pointer active:scale-95 transition-transform duration-150 flex-shrink-0 ${
                   selectedTag === tag
-                    ? 'bg-blue-500'
+                    ? 'bg-green-500'
                     : 'bg-gray-100 dark:bg-gray-900'
                 }`}
               >
@@ -334,7 +334,7 @@ export default function NotebookPage() {
                       className="w-8 h-8 flex items-center justify-center cursor-pointer"
                       onClick={() => archiveNote(note.id)}
                     >
-                      <Archive size={16} color={note.isArchived ? '#3B82F6' : iconColorGray} />
+                      <Archive size={16} color={note.isArchived ? '#22C55E' : iconColorGray} />
                     </View>
                     <View
                       className="w-8 h-8 flex items-center justify-center cursor-pointer"
@@ -356,10 +356,11 @@ export default function NotebookPage() {
                       {note.tags.split(',').slice(0, 3).map((tag, idx) => (
                         <View 
                           key={idx} 
-                          className="bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded cursor-pointer"
+                          className="px-2 py-1 rounded cursor-pointer"
+                          style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}
                           onClick={() => setSelectedTag(tag.trim())}
                         >
-                          <Text className="text-xs text-blue-600 dark:text-blue-400">
+                          <Text className="text-xs" style={{ color: '#22C55E' }}>
                             #{tag.trim()}
                           </Text>
                         </View>

@@ -14,24 +14,24 @@ import { Network } from '@/network'
 
 // 对话模式
 const chatModes = [
-  { id: 'fast' as const, label: '快速', description: '快速响应' },
-  { id: 'standard' as const, label: '标准', description: '标准回答' },
-  { id: 'thinking' as const, label: '深度', description: '深度思考' },
+  { id: 'fast' as const, label: '快速响应', description: '适合日常对话，秒级响应，简洁高效，适合快速问答' },
+  { id: 'standard' as const, label: '标准回答', description: '平衡速度与质量，回答更加完整详细，适合大多数场景' },
+  { id: 'thinking' as const, label: '深度思考', description: '展示完整推理过程，深入分析问题，适合复杂问题和创意任务' },
 ]
 
 // 生图分辨率
 const imageSizes = [
-  { id: '1K' as const, label: '1K', description: '快速生成' },
-  { id: '2K' as const, label: '2K', description: '高清画质' },
-  { id: '4K' as const, label: '4K', description: '超高清' },
+  { id: '1K' as const, label: '快速生成', description: '1024×1024 分辨率，适合快速预览和测试想法' },
+  { id: '2K' as const, label: '高清画质', description: '2048×2048 分辨率，适合社交媒体分享和展示' },
+  { id: '4K' as const, label: '超高清', description: '4096×4096 分辨率，适合打印、海报和大屏展示' },
 ]
 
 // 文档类型
 const docTypes = [
-  { id: 'report' as const, label: '报告', description: '专业分析报告' },
-  { id: 'proposal' as const, label: '方案', description: '实施方案文档' },
-  { id: 'summary' as const, label: '总结', description: '工作总结文档' },
-  { id: 'free' as const, label: '自由', description: '自由格式文档' },
+  { id: 'report' as const, label: '专业报告', description: '数据分析、项目汇报、调研报告等专业文档' },
+  { id: 'proposal' as const, label: '实施方案', description: '项目规划、活动策划、解决方案等方案文档' },
+  { id: 'summary' as const, label: '工作总结', description: '周报月报、项目总结、学习笔记等总结文档' },
+  { id: 'free' as const, label: '自由格式', description: '不限格式，自由发挥，适合创意写作' },
 ]
 
 const iconComponents: Record<string, any> = { Sparkles, Code, Pen, Zap, ChartBarBig }
@@ -39,20 +39,40 @@ const iconComponents: Record<string, any> = { Sparkles, Code, Pen, Zap, ChartBar
 // 动画样式
 const slideUpAnimation = `
   @keyframes slideUp {
-    from { transform: translateY(100%); opacity: 0; }
+    from { transform: translateY(16px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes slideDown {
+    from { transform: translateY(-16px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
   }
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  @keyframes scaleIn {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
   @keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
   }
   @keyframes bounce {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-4px); }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes ripple {
+    0% { transform: scale(1); opacity: 0.4; }
+    100% { transform: scale(2.5); opacity: 0; }
   }
 `
 
@@ -735,13 +755,14 @@ export default function Chat() {
           {currentProject && (
             <View 
               onClick={() => setShowProjectPanel(true)}
-              className="flex flex-row items-center gap-1 px-3 py-2 rounded-full bg-blue-100 dark:bg-blue-900 cursor-pointer active:opacity-60"
+              className="flex flex-row items-center gap-1 px-3 py-2 rounded-full cursor-pointer active:scale-95 transition-transform duration-150"
+              style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}
             >
-              <FolderOpen size={14} color="#3B82F6" />
-              <Text className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+              <FolderOpen size={14} color="#22C55E" />
+              <Text className="text-xs font-medium" style={{ color: '#22C55E' }}>
                 {currentProject.name}
               </Text>
-              <ChevronDown size={12} color="#3B82F6" />
+              <ChevronDown size={12} color="#22C55E" />
             </View>
           )}
           
@@ -749,7 +770,7 @@ export default function Chat() {
           {!currentProject && (
             <View 
               onClick={() => setShowProjectPanel(true)}
-              className="flex flex-row items-center gap-1 px-3 py-2 rounded-full bg-gray-100 dark:bg-gray-900 cursor-pointer active:opacity-60"
+              className="flex flex-row items-center gap-1 px-3 py-2 rounded-full bg-gray-100 dark:bg-gray-900 cursor-pointer active:scale-95 transition-transform duration-150"
             >
               <FolderOpen size={14} color={iconColorGray} />
               <Text className="text-xs text-gray-600 dark:text-gray-400">
@@ -804,12 +825,11 @@ export default function Chat() {
         {currentTool === 'document' && generatedDoc && (
           <View 
             className="px-4 mb-2"
-            style={{ animation: 'slideUp 0.3s ease-out' }}
+            style={{ animation: 'slideUp 0.25s ease-out' }}
           >
             <View 
               onClick={handleDownloadDocument}
-              className="flex flex-row items-center justify-center gap-2 py-3 rounded-xl bg-blue-500 cursor-pointer active:opacity-80"
-              style={{ animation: 'pulse 2s infinite' }}
+              className="flex flex-row items-center justify-center gap-2 py-3 rounded-xl bg-green-500 cursor-pointer active:scale-95 transition-transform duration-150"
             >
               <Download size={18} color="#FFFFFF" />
               <Text className="text-white text-sm font-medium">下载Word文档</Text>
@@ -819,8 +839,8 @@ export default function Chat() {
         
         {/* 输入区域 */}
         <View 
-          className={`bg-gray-100 dark:bg-gray-900 rounded-3xl mx-3 overflow-hidden transition-all duration-300 ${isRecording ? 'bg-blue-500' : ''}`}
-          style={{ animation: 'slideUp 0.3s ease-out' }}
+          className={`rounded-3xl mx-3 overflow-hidden transition-all duration-200 ${isRecording ? 'bg-green-500' : 'bg-gray-100 dark:bg-gray-900'}`}
+          style={{ animation: 'slideUp 0.25s ease-out' }}
         >
           {/* 上排：输入区域 */}
           <View className="flex flex-row items-center gap-2 px-3 py-3">
@@ -861,104 +881,102 @@ export default function Chat() {
             {showTextInput && inputText.trim() && (
               <View 
                 onClick={handleSend} 
-                className="p-1 cursor-pointer active:opacity-60 transition-transform duration-150"
-                style={{ animation: 'fadeIn 0.2s ease-out' }}
+                className="p-1 cursor-pointer active:scale-90 transition-transform duration-150"
+                style={{ animation: 'scaleIn 0.2s ease-out' }}
               >
-                <Send size={22} color="#1890FF" />
+                <Send size={22} color="#22C55E" />
               </View>
             )}
           </View>
           
           {/* 分隔线 */}
-          <View className="h-px bg-gray-200 dark:bg-gray-800 mx-4" />
+          <View className="h-px bg-gray-200 dark:bg-gray-800 mx-3" />
           
-          {/* 下排：功能按钮 */}
-          <View className="flex flex-row items-center justify-between px-3 py-2">
+          {/* 下排：功能按钮 - 更扁更紧凑 */}
+          <View className="flex flex-row items-center justify-between px-2 py-1">
             {/* 左侧：模式选择 */}
             <View 
               onClick={() => setShowChatModePanel(true)} 
-              className="flex flex-row items-center gap-1 cursor-pointer active:opacity-60 flex-shrink-0"
+              className="flex flex-row items-center gap-1 px-2 py-1 rounded-full cursor-pointer active:scale-95 transition-transform duration-150 flex-shrink-0"
             >
-              <Text className="block text-xs text-black dark:text-white">{currentMode.label}</Text>
-              <ChevronDown size={12} color={iconColorGray} />
+              <Text className="block text-xs text-black dark:text-white font-medium">{currentMode.label}</Text>
+              <ChevronDown size={10} color={iconColorGray} />
             </View>
             
-            {/* 右侧：工具按钮 - 横向滚动 */}
-            <ScrollView scrollX className="flex-1 ml-3 whitespace-nowrap" style={{ width: 'auto' }}>
-              <View className="flex flex-row items-center gap-2 inline-flex">
-                {/* 技能 */}
-                <View 
-                  onClick={() => setShowSkillPanel(true)} 
-                  className={`flex flex-row items-center gap-1 px-2 py-1 rounded-full cursor-pointer active:opacity-60 transition-all duration-200 flex-shrink-0 ${activeSkill ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
-                >
-                  <Sparkles size={12} color={activeSkill ? '#fff' : iconColorGray} />
-                  <Text className={`block text-xs ${activeSkill ? 'text-white' : 'text-black dark:text-white'}`}>
-                    {activeSkill ? activeSkill.name : '技能'}
-                  </Text>
-                  {activeSkill && (
-                    <View 
-                      onClick={(e) => { e.stopPropagation(); setActiveSkill(null); setCurrentTool('chat') }}
-                      className="ml-1"
-                    >
-                      <X size={12} color="#fff" />
-                    </View>
-                  )}
-                  {!activeSkill && <ChevronDown size={10} color={iconColorGray} />}
-                </View>
-                
-                {/* 生图 */}
-                <View 
-                  onClick={() => setShowImagePanel(true)} 
-                  className={`flex flex-row items-center gap-1 px-2 py-1 rounded-full cursor-pointer active:opacity-60 transition-all duration-200 flex-shrink-0 ${currentTool === 'image' ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
-                >
-                  <ImageIcon size={12} color={currentTool === 'image' ? '#fff' : iconColorGray} />
-                  <Text className={`block text-xs ${currentTool === 'image' ? 'text-white' : 'text-black dark:text-white'}`}>
-                    {currentTool === 'image' ? currentImageSize.label : '生图'}
-                  </Text>
-                  {currentTool === 'image' && (
-                    <View 
-                      onClick={(e) => { e.stopPropagation(); setCurrentTool('chat') }}
-                      className="ml-1"
-                    >
-                      <X size={12} color="#fff" />
-                    </View>
-                  )}
-                  {currentTool !== 'image' && <ChevronDown size={10} color={iconColorGray} />}
-                </View>
-                
-                {/* 文档 */}
-                <View 
-                  onClick={() => setShowDocPanel(true)} 
-                  className={`flex flex-row items-center gap-1 px-2 py-1 rounded-full cursor-pointer active:opacity-60 transition-all duration-200 flex-shrink-0 ${currentTool === 'document' ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
-                >
-                  <FileText size={12} color={currentTool === 'document' ? '#fff' : iconColorGray} />
-                  <Text className={`block text-xs ${currentTool === 'document' ? 'text-white' : 'text-black dark:text-white'}`}>
-                    {currentTool === 'document' ? currentDocType.label : '文档'}
-                  </Text>
-                  {currentTool === 'document' && (
-                    <View 
-                      onClick={(e) => { e.stopPropagation(); setCurrentTool('chat') }}
-                      className="ml-1"
-                    >
-                      <X size={12} color="#fff" />
-                    </View>
-                  )}
-                  {currentTool !== 'document' && <ChevronDown size={10} color={iconColorGray} />}
-                </View>
-                
-                {/* 上传文件（仅对话模式） */}
-                {currentTool === 'chat' && (
-                  <View onClick={handleChooseFile} className="p-1 cursor-pointer active:opacity-60 flex-shrink-0">
-                    <Plus size={16} color={iconColorGray} />
+            {/* 右侧：工具按钮 */}
+            <View className="flex flex-row items-center gap-1">
+              {/* 技能 */}
+              <View 
+                onClick={() => setShowSkillPanel(true)} 
+                className={`flex flex-row items-center gap-1 px-2 py-1 rounded-full cursor-pointer active:scale-95 transition-all duration-150 flex-shrink-0 ${activeSkill ? 'bg-green-500' : 'bg-gray-100 dark:bg-gray-800'}`}
+              >
+                <Sparkles size={12} color={activeSkill ? '#fff' : iconColorGray} />
+                <Text className={`block text-xs ${activeSkill ? 'text-white' : 'text-black dark:text-white'}`}>
+                  {activeSkill ? activeSkill.name : '技能'}
+                </Text>
+                {activeSkill && (
+                  <View 
+                    onClick={(e) => { e.stopPropagation(); setActiveSkill(null); setCurrentTool('chat') }}
+                    className="ml-1"
+                  >
+                    <X size={10} color="#fff" />
                   </View>
                 )}
+                {!activeSkill && <ChevronDown size={8} color={iconColorGray} />}
               </View>
-            </ScrollView>
+              
+              {/* 生图 */}
+              <View 
+                onClick={() => setShowImagePanel(true)} 
+                className={`flex flex-row items-center gap-1 px-2 py-1 rounded-full cursor-pointer active:scale-95 transition-all duration-150 flex-shrink-0 ${currentTool === 'image' ? 'bg-green-500' : 'bg-gray-100 dark:bg-gray-800'}`}
+              >
+                <ImageIcon size={12} color={currentTool === 'image' ? '#fff' : iconColorGray} />
+                <Text className={`block text-xs ${currentTool === 'image' ? 'text-white' : 'text-black dark:text-white'}`}>
+                  {currentTool === 'image' ? currentImageSize.label : '生图'}
+                </Text>
+                {currentTool === 'image' && (
+                  <View 
+                    onClick={(e) => { e.stopPropagation(); setCurrentTool('chat') }}
+                    className="ml-1"
+                  >
+                    <X size={10} color="#fff" />
+                  </View>
+                )}
+                {currentTool !== 'image' && <ChevronDown size={8} color={iconColorGray} />}
+              </View>
+              
+              {/* 文档 */}
+              <View 
+                onClick={() => setShowDocPanel(true)} 
+                className={`flex flex-row items-center gap-1 px-2 py-1 rounded-full cursor-pointer active:scale-95 transition-all duration-150 flex-shrink-0 ${currentTool === 'document' ? 'bg-green-500' : 'bg-gray-100 dark:bg-gray-800'}`}
+              >
+                <FileText size={12} color={currentTool === 'document' ? '#fff' : iconColorGray} />
+                <Text className={`block text-xs ${currentTool === 'document' ? 'text-white' : 'text-black dark:text-white'}`}>
+                  {currentTool === 'document' ? currentDocType.label : '文档'}
+                </Text>
+                {currentTool === 'document' && (
+                  <View 
+                    onClick={(e) => { e.stopPropagation(); setCurrentTool('chat') }}
+                    className="ml-1"
+                  >
+                    <X size={10} color="#fff" />
+                  </View>
+                )}
+                {currentTool !== 'document' && <ChevronDown size={8} color={iconColorGray} />}
+              </View>
+              
+              {/* 上传文件（仅对话模式） */}
+              {currentTool === 'chat' && (
+                <View onClick={handleChooseFile} className="p-1 cursor-pointer active:scale-90 transition-transform duration-150 flex-shrink-0">
+                  <Plus size={14} color={iconColorGray} />
+                </View>
+              )}
+            </View>
           </View>
         </View>
         
         {/* 底部安全区域 */}
-        <View className="h-4" />
+        <View className="h-3" />
       </View>
 
       {/* 通用面板组件 */}
@@ -979,13 +997,13 @@ export default function Chat() {
       {/* 对话模式选择面板 */}
       {showChatModePanel && (
         <View 
-          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 p-4"
-          style={{ animation: 'slideUp 0.3s ease-out' }}
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black rounded-t-2xl z-50 p-4"
+          style={{ animation: 'slideUp 0.25s ease-out' }}
         >
-          <View className="flex flex-row items-center justify-between mb-4">
-            <Text className="block text-lg font-medium text-black dark:text-white">选择模式</Text>
-            <View onClick={() => setShowChatModePanel(false)} className="p-1 cursor-pointer active:opacity-60">
-              <X size={20} color={iconColorGray} />
+          <View className="flex flex-row items-center justify-between mb-3">
+            <Text className="block text-base font-medium text-black dark:text-white">选择模式</Text>
+            <View onClick={() => setShowChatModePanel(false)} className="p-1 cursor-pointer active:scale-90 transition-transform duration-150">
+              <X size={18} color={iconColorGray} />
             </View>
           </View>
           {chatModes.map((mode, index) => {
@@ -994,18 +1012,18 @@ export default function Chat() {
             return (
               <View
                 key={mode.id}
-                className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:opacity-60 ${isActive ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : ''} ${isDisabled ? 'opacity-40' : ''}`}
-                style={{ animation: `slideUp 0.3s ease-out ${index * 0.05}s both` }}
+                className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:scale-98 transition-all duration-150 ${isActive ? 'bg-gray-100 dark:bg-gray-900' : ''} ${isDisabled ? 'opacity-40' : ''}`}
+                style={{ animation: `slideUp 0.25s ease-out ${index * 0.04}s both` }}
                 onClick={() => { if (!isDisabled) { setChatMode(mode.id); setShowChatModePanel(false) } }}
               >
                 <View className="flex-1">
-                  <Text className={`block text-sm font-medium ${isActive ? 'text-blue-500' : 'text-black dark:text-white'}`}>{mode.label}</Text>
-                  <Text className="block text-xs text-gray-500">{mode.description}</Text>
+                  <Text className={`block text-sm font-medium ${isActive ? 'text-green-500' : 'text-black dark:text-white'}`}>{mode.label}</Text>
+                  <Text className="block text-xs text-gray-500 dark:text-gray-400 mt-1">{mode.description}</Text>
                 </View>
                 {isActive && (
                   <View 
-                    className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center"
-                    style={{ animation: 'fadeIn 0.2s ease-out' }}
+                    className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center"
+                    style={{ animation: 'scaleIn 0.2s ease-out' }}
                   >
                     <Text className="block text-white text-xs">✓</Text>
                   </View>
@@ -1019,13 +1037,13 @@ export default function Chat() {
       {/* 生图分辨率选择面板 */}
       {showImagePanel && (
         <View 
-          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 p-4"
-          style={{ animation: 'slideUp 0.3s ease-out' }}
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black rounded-t-2xl z-50 p-4"
+          style={{ animation: 'slideUp 0.25s ease-out' }}
         >
-          <View className="flex flex-row items-center justify-between mb-4">
-            <Text className="block text-lg font-medium text-black dark:text-white">选择分辨率</Text>
-            <View onClick={() => setShowImagePanel(false)} className="p-1 cursor-pointer active:opacity-60">
-              <X size={20} color={iconColorGray} />
+          <View className="flex flex-row items-center justify-between mb-3">
+            <Text className="block text-base font-medium text-black dark:text-white">选择分辨率</Text>
+            <View onClick={() => setShowImagePanel(false)} className="p-1 cursor-pointer active:scale-90 transition-transform duration-150">
+              <X size={18} color={iconColorGray} />
             </View>
           </View>
           {imageSizes.map((size, index) => {
@@ -1033,8 +1051,8 @@ export default function Chat() {
             return (
               <View
                 key={size.id}
-                className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:opacity-60 ${isActive ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : ''}`}
-                style={{ animation: `slideUp 0.3s ease-out ${index * 0.05}s both` }}
+                className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:scale-98 transition-all duration-150 ${isActive ? 'bg-gray-100 dark:bg-gray-900' : ''}`}
+                style={{ animation: `slideUp 0.25s ease-out ${index * 0.04}s both` }}
                 onClick={() => { 
                   setImageSize(size.id)
                   setCurrentTool('image')
@@ -1043,11 +1061,11 @@ export default function Chat() {
                 }}
               >
                 <View className="flex-1">
-                  <Text className={`block text-sm font-medium ${isActive ? 'text-blue-500' : 'text-black dark:text-white'}`}>{size.label}</Text>
-                  <Text className="block text-xs text-gray-500">{size.description}</Text>
+                  <Text className={`block text-sm font-medium ${isActive ? 'text-green-500' : 'text-black dark:text-white'}`}>{size.label}</Text>
+                  <Text className="block text-xs text-gray-500 dark:text-gray-400 mt-1">{size.description}</Text>
                 </View>
                 {isActive && (
-                  <View className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                  <View className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
                     <Text className="block text-white text-xs">✓</Text>
                   </View>
                 )}
@@ -1060,13 +1078,13 @@ export default function Chat() {
       {/* 文档类型选择面板 */}
       {showDocPanel && (
         <View 
-          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 p-4"
-          style={{ animation: 'slideUp 0.3s ease-out' }}
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black rounded-t-2xl z-50 p-4"
+          style={{ animation: 'slideUp 0.25s ease-out' }}
         >
-          <View className="flex flex-row items-center justify-between mb-4">
-            <Text className="block text-lg font-medium text-black dark:text-white">选择文档类型</Text>
-            <View onClick={() => setShowDocPanel(false)} className="p-1 cursor-pointer active:opacity-60">
-              <X size={20} color={iconColorGray} />
+          <View className="flex flex-row items-center justify-between mb-3">
+            <Text className="block text-base font-medium text-black dark:text-white">选择文档类型</Text>
+            <View onClick={() => setShowDocPanel(false)} className="p-1 cursor-pointer active:scale-90 transition-transform duration-150">
+              <X size={18} color={iconColorGray} />
             </View>
           </View>
           {docTypes.map((type, index) => {
@@ -1074,8 +1092,8 @@ export default function Chat() {
             return (
               <View
                 key={type.id}
-                className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:opacity-60 ${isActive ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : ''}`}
-                style={{ animation: `slideUp 0.3s ease-out ${index * 0.05}s both` }}
+                className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:scale-98 transition-all duration-150 ${isActive ? 'bg-gray-100 dark:bg-gray-900' : ''}`}
+                style={{ animation: `slideUp 0.25s ease-out ${index * 0.04}s both` }}
                 onClick={() => { 
                   setDocType(type.id)
                   setCurrentTool('document')
@@ -1084,11 +1102,11 @@ export default function Chat() {
                 }}
               >
                 <View className="flex-1">
-                  <Text className={`block text-sm font-medium ${isActive ? 'text-blue-500' : 'text-black dark:text-white'}`}>{type.label}</Text>
-                  <Text className="block text-xs text-gray-500">{type.description}</Text>
+                  <Text className={`block text-sm font-medium ${isActive ? 'text-green-500' : 'text-black dark:text-white'}`}>{type.label}</Text>
+                  <Text className="block text-xs text-gray-500 dark:text-gray-400 mt-1">{type.description}</Text>
                 </View>
                 {isActive && (
-                  <View className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                  <View className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
                     <Text className="block text-white text-xs">✓</Text>
                   </View>
                 )}
@@ -1101,20 +1119,20 @@ export default function Chat() {
       {/* 技能选择面板 */}
       {showSkillPanel && (
         <View 
-          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 p-4 max-h-[60vh]"
-          style={{ animation: 'slideUp 0.3s ease-out' }}
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black rounded-t-2xl z-50 p-4 max-h-[60vh]"
+          style={{ animation: 'slideUp 0.25s ease-out' }}
         >
-          <View className="flex flex-row items-center justify-between mb-4">
-            <Text className="block text-lg font-medium text-black dark:text-white">选择技能</Text>
+          <View className="flex flex-row items-center justify-between mb-3">
+            <Text className="block text-base font-medium text-black dark:text-white">选择技能</Text>
             <View className="flex flex-row items-center gap-2">
               <View 
                 onClick={() => { setShowSkillPanel(false); Taro.navigateTo({ url: '/pages/skills/index' }) }}
-                className="px-3 py-1 rounded-lg bg-blue-500 cursor-pointer active:opacity-60"
+                className="px-3 py-1 rounded-lg bg-green-500 cursor-pointer active:scale-95 transition-transform duration-150"
               >
                 <Text className="text-xs text-white">管理</Text>
               </View>
-              <View onClick={() => setShowSkillPanel(false)} className="p-1 cursor-pointer active:opacity-60">
-                <X size={20} color={iconColorGray} />
+              <View onClick={() => setShowSkillPanel(false)} className="p-1 cursor-pointer active:scale-90 transition-transform duration-150">
+                <X size={18} color={iconColorGray} />
               </View>
             </View>
           </View>
@@ -1122,10 +1140,10 @@ export default function Chat() {
           {skills.length === 0 ? (
             <View className="flex flex-col items-center py-8">
               <Sparkles size={40} color={iconColorGray} />
-              <Text className="block text-gray-500 mt-3">暂无技能</Text>
+              <Text className="block text-gray-500 dark:text-gray-400 mt-3">暂无技能</Text>
               <View 
                 onClick={() => { setShowSkillPanel(false); Taro.navigateTo({ url: '/pages/skills/index' }) }}
-                className="mt-3 px-4 py-2 rounded-lg bg-blue-500 cursor-pointer active:opacity-60"
+                className="mt-3 px-4 py-2 rounded-lg bg-green-500 cursor-pointer active:scale-95 transition-transform duration-150"
               >
                 <Text className="text-sm text-white">创建技能</Text>
               </View>
@@ -1134,14 +1152,15 @@ export default function Chat() {
             <ScrollView scrollY style={{ maxHeight: '40vh' }}>
               {activeSkill && (
                 <View
-                  className="flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:opacity-60 bg-red-50 dark:bg-red-900 dark:bg-opacity-20"
+                  className="flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:scale-98 transition-all duration-150"
+                  style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
                   onClick={() => { 
                     setActiveSkill(null)
                     setCurrentTool('chat')
                     setShowSkillPanel(false)
                   }}
                 >
-                  <Text className="block text-sm text-red-500">取消技能调用</Text>
+                  <Text className="block text-sm" style={{ color: '#EF4444' }}>取消技能调用</Text>
                 </View>
               )}
               
@@ -1151,8 +1170,8 @@ export default function Chat() {
                 return (
                   <View
                     key={skill.id}
-                    className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:opacity-60 ${isActive ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : ''}`}
-                    style={{ animation: `slideUp 0.3s ease-out ${index * 0.03}s both` }}
+                    className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:scale-98 transition-all duration-150 ${isActive ? 'bg-gray-100 dark:bg-gray-900' : ''}`}
+                    style={{ animation: `slideUp 0.25s ease-out ${index * 0.03}s both` }}
                     onClick={() => { 
                       setActiveSkill({ id: skill.id, name: skill.name, prompt: skill.prompt })
                       setCurrentTool('chat')
@@ -1160,15 +1179,15 @@ export default function Chat() {
                       setShowTextInput(true)
                     }}
                   >
-                    <View className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20 flex items-center justify-center">
-                      <IconComponent size={16} color="#1890FF" />
+                    <View className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                      <IconComponent size={16} color="#22C55E" />
                     </View>
                     <View className="flex-1">
-                      <Text className={`block text-sm font-medium ${isActive ? 'text-blue-500' : 'text-black dark:text-white'}`}>{skill.name}</Text>
-                      <Text className="block text-xs text-gray-500">{skill.description || '暂无描述'}</Text>
+                      <Text className={`block text-sm font-medium ${isActive ? 'text-green-500' : 'text-black dark:text-white'}`}>{skill.name}</Text>
+                      <Text className="block text-xs text-gray-500 dark:text-gray-400">{skill.description || '暂无描述'}</Text>
                     </View>
                     {isActive && (
-                      <View className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                      <View className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
                         <Text className="block text-white text-xs">✓</Text>
                       </View>
                     )}
@@ -1183,27 +1202,27 @@ export default function Chat() {
       {/* 项目选择面板 */}
       {showProjectPanel && (
         <View 
-          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 p-4 max-h-[70vh]"
-          style={{ animation: 'slideUp 0.3s ease-out' }}
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black rounded-t-2xl z-50 p-4 max-h-[70vh]"
+          style={{ animation: 'slideUp 0.25s ease-out' }}
         >
-          <View className="flex flex-row items-center justify-between mb-4">
-            <Text className="block text-lg font-medium text-black dark:text-white">选择项目</Text>
+          <View className="flex flex-row items-center justify-between mb-3">
+            <Text className="block text-base font-medium text-black dark:text-white">选择项目</Text>
             <View className="flex flex-row items-center gap-2">
               <View 
                 onClick={() => { setShowProjectPanel(false); Taro.navigateTo({ url: '/pages/projects/create' }) }}
-                className="px-3 py-1 rounded-lg bg-blue-500 cursor-pointer active:opacity-60"
+                className="px-3 py-1 rounded-lg bg-green-500 cursor-pointer active:scale-95 transition-transform duration-150"
               >
                 <Text className="text-xs text-white">新建</Text>
               </View>
-              <View onClick={() => setShowProjectPanel(false)} className="p-1 cursor-pointer active:opacity-60">
-                <X size={20} color={iconColorGray} />
+              <View onClick={() => setShowProjectPanel(false)} className="p-1 cursor-pointer active:scale-90 transition-transform duration-150">
+                <X size={18} color={iconColorGray} />
               </View>
             </View>
           </View>
           
           {/* 无项目选项 */}
           <View
-            className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:opacity-60 ${!currentProject ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : ''}`}
+            className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:scale-98 transition-all duration-150 ${!currentProject ? 'bg-gray-100 dark:bg-gray-900' : ''}`}
             onClick={() => handleClearProject()}
           >
             <View className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
@@ -1211,10 +1230,10 @@ export default function Chat() {
             </View>
             <View className="flex-1">
               <Text className="block text-sm font-medium text-black dark:text-white">普通对话</Text>
-              <Text className="block text-xs text-gray-500">不关联任何项目</Text>
+              <Text className="block text-xs text-gray-500 dark:text-gray-400">不关联任何项目</Text>
             </View>
             {!currentProject && (
-              <View className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+              <View className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
                 <Text className="block text-white text-xs">✓</Text>
               </View>
             )}
@@ -1223,10 +1242,10 @@ export default function Chat() {
           {projects.length === 0 ? (
             <View className="flex flex-col items-center py-8">
               <FolderOpen size={40} color={iconColorGray} />
-              <Text className="block text-gray-500 mt-3">暂无项目</Text>
+              <Text className="block text-gray-500 dark:text-gray-400 mt-3">暂无项目</Text>
               <View 
                 onClick={() => { setShowProjectPanel(false); Taro.navigateTo({ url: '/pages/projects/create' }) }}
-                className="mt-3 px-4 py-2 rounded-lg bg-blue-500 cursor-pointer active:opacity-60"
+                className="mt-3 px-4 py-2 rounded-lg bg-green-500 cursor-pointer active:scale-95 transition-transform duration-150"
               >
                 <Text className="text-sm text-white">创建项目</Text>
               </View>
@@ -1238,19 +1257,19 @@ export default function Chat() {
                 return (
                   <View
                     key={project.id}
-                    className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:opacity-60 ${isActive ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : ''}`}
-                    style={{ animation: `slideUp 0.3s ease-out ${index * 0.03}s both` }}
+                    className={`flex flex-row items-center gap-3 p-3 rounded-xl mb-2 cursor-pointer active:scale-98 transition-all duration-150 ${isActive ? 'bg-gray-100 dark:bg-gray-900' : ''}`}
+                    style={{ animation: `slideUp 0.25s ease-out ${index * 0.03}s both` }}
                     onClick={() => handleSelectProject(project)}
                   >
-                    <View className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20 flex items-center justify-center">
-                      <FolderOpen size={16} color="#1890FF" />
+                    <View className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                      <FolderOpen size={16} color="#22C55E" />
                     </View>
                     <View className="flex-1">
-                      <Text className={`block text-sm font-medium ${isActive ? 'text-blue-500' : 'text-black dark:text-white'}`}>{project.name}</Text>
-                      <Text className="block text-xs text-gray-500">{project.description || '暂无描述'}</Text>
+                      <Text className={`block text-sm font-medium ${isActive ? 'text-green-500' : 'text-black dark:text-white'}`}>{project.name}</Text>
+                      <Text className="block text-xs text-gray-500 dark:text-gray-400">{project.description || '暂无描述'}</Text>
                     </View>
                     {isActive && (
-                      <View className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                      <View className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
                         <Text className="block text-white text-xs">✓</Text>
                       </View>
                     )}

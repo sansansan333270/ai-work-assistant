@@ -61,7 +61,7 @@ export default function ProjectsPage() {
     return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
   }
 
-  const iconColorGray = theme === 'dark' ? '#666666' : '#8C8C8C'
+  const iconColorGray = theme === 'dark' ? '#888888' : '#8C8C8C'
 
   return (
     <View className={`min-h-screen bg-white dark:bg-black ${theme === 'dark' ? 'dark' : ''}`}>
@@ -76,7 +76,7 @@ export default function ProjectsPage() {
           </View>
           <View 
             onClick={handleCreateProject}
-            className="bg-blue-500 px-4 py-2 rounded-full cursor-pointer active:opacity-80"
+            className="bg-green-500 px-4 py-2 rounded-full cursor-pointer active:scale-95 transition-transform duration-150"
           >
             <Text className="text-white text-sm font-medium">+ 新建</Text>
           </View>
@@ -88,9 +88,9 @@ export default function ProjectsPage() {
         {(['all', 'novel', 'article', 'code'] as const).map(tab => (
           <View
             key={tab}
-            className={`px-4 py-2 rounded-full cursor-pointer ${
+            className={`px-4 py-2 rounded-full cursor-pointer active:scale-95 transition-transform duration-150 ${
               activeTab === tab
-                ? 'bg-blue-500'
+                ? 'bg-green-500'
                 : 'bg-gray-100 dark:bg-gray-900'
             }`}
             onClick={() => setActiveTab(tab)}
@@ -107,7 +107,7 @@ export default function ProjectsPage() {
       <ScrollView className="p-4" scrollY style={{ height: 'calc(100vh - 200px)' }}>
         {loading ? (
           <View className="flex items-center justify-center py-20">
-            <Text className="text-gray-500">加载中...</Text>
+            <Text className="text-gray-500 dark:text-gray-400">加载中...</Text>
           </View>
         ) : filteredProjects.length === 0 ? (
           <View className="flex flex-col items-center justify-center py-20">
@@ -117,7 +117,7 @@ export default function ProjectsPage() {
             </Text>
             <View 
               onClick={handleCreateProject}
-              className="bg-blue-500 px-6 py-3 rounded-full cursor-pointer active:opacity-80"
+              className="bg-green-500 px-6 py-3 rounded-full cursor-pointer active:scale-95 transition-transform duration-150"
             >
               <Text className="text-white font-medium">创建第一个项目</Text>
             </View>
@@ -129,28 +129,16 @@ export default function ProjectsPage() {
               return (
                 <View
                   key={project.id}
-                  className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 cursor-pointer active:opacity-80"
+                  className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 cursor-pointer active:scale-98 transition-transform duration-150"
                   onClick={() => handleOpenProject(project)}
                 >
                   <View className="flex flex-row justify-between items-start mb-2">
                     <View className="flex flex-row items-center gap-3 flex-1">
                       <View
-                        className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                          project.type === 'novel' ? 'bg-purple-100 dark:bg-purple-900' :
-                          project.type === 'article' ? 'bg-blue-100 dark:bg-blue-900' :
-                          project.type === 'code' ? 'bg-green-100 dark:bg-green-900' :
-                          'bg-gray-200 dark:bg-gray-800'
-                        }`}
+                        className="w-10 h-10 rounded-xl flex items-center justify-center"
+                        style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}
                       >
-                        <IconComponent
-                          size={20}
-                          color={
-                            project.type === 'novel' ? '#9333EA' :
-                            project.type === 'article' ? '#3B82F6' :
-                            project.type === 'code' ? '#22C55E' :
-                            iconColorGray
-                          }
-                        />
+                        <IconComponent size={20} color="#22C55E" />
                       </View>
                       <View className="flex-1">
                         <Text className="text-base font-semibold text-black dark:text-white">
@@ -161,18 +149,24 @@ export default function ProjectsPage() {
                             {typeNames[project.type]}
                           </Text>
                           <View
-                            className={`px-2 py-1 rounded-full ${
-                              project.status === 'active' ? 'bg-green-100 dark:bg-green-900' :
-                              project.status === 'paused' ? 'bg-yellow-100 dark:bg-yellow-900' :
-                              'bg-gray-200 dark:bg-gray-700'
-                            }`}
+                            className="px-2 py-1 rounded-full"
+                            style={{ 
+                              backgroundColor: project.status === 'active' 
+                                ? 'rgba(34, 197, 94, 0.1)' 
+                                : project.status === 'paused'
+                                ? 'rgba(250, 173, 20, 0.1)'
+                                : 'rgba(107, 114, 128, 0.1)'
+                            }}
                           >
                             <Text
-                              className={`text-xs ${
-                                project.status === 'active' ? 'text-green-600 dark:text-green-400' :
-                                project.status === 'paused' ? 'text-yellow-600 dark:text-yellow-400' :
-                                'text-gray-500 dark:text-gray-400'
-                              }`}
+                              className="text-xs"
+                              style={{ 
+                                color: project.status === 'active' 
+                                  ? '#22C55E' 
+                                  : project.status === 'paused'
+                                  ? '#FAAD14'
+                                  : '#6B7280'
+                              }}
                             >
                               {statusNames[project.status]}
                             </Text>
@@ -192,11 +186,11 @@ export default function ProjectsPage() {
                   <View className="flex flex-row justify-between items-center">
                     <View className="flex flex-row items-center gap-1">
                       <Clock size={12} color={iconColorGray} />
-                      <Text className="text-xs text-gray-400">
+                      <Text className="text-xs text-gray-400 dark:text-gray-500">
                         {formatDate(project.lastActiveAt || project.createdAt)}
                       </Text>
                     </View>
-                    <Text className="text-xs text-gray-400">
+                    <Text className="text-xs text-gray-400 dark:text-gray-500">
                       {project.sessionCount || 0} 次对话
                     </Text>
                   </View>
@@ -211,7 +205,7 @@ export default function ProjectsPage() {
       {projects.length > 0 && (
         <View
           onClick={handleCreateProject}
-          className="fixed right-4 bottom-20 w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center shadow-lg cursor-pointer active:opacity-80"
+          className="fixed right-4 bottom-20 w-14 h-14 bg-green-500 rounded-full flex items-center justify-center shadow-lg cursor-pointer active:scale-90 transition-transform duration-150"
           style={{ zIndex: 100 }}
         >
           <Plus size={24} color="#FFFFFF" />

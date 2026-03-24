@@ -109,19 +109,19 @@ export default function SkillsPage() {
     setFormData({ name: '', description: '', prompt: '', category: 'custom', icon: 'Sparkles' })
   }
 
-  const iconColor = theme === 'dark' ? '#FFFFFF' : '#1F1F1F'
-  const iconColorGray = theme === 'dark' ? '#666666' : '#8C8C8C'
+  const iconColor = theme === 'dark' ? '#FFFFFF' : '#000000'
+  const iconColorGray = theme === 'dark' ? '#888888' : '#8C8C8C'
 
   return (
     <View className={`min-h-screen bg-white dark:bg-black ${theme === 'dark' ? 'dark' : ''}`}>
       {/* 顶部导航 */}
-      <View className="flex items-center justify-between h-14 px-4 border-b dark:border-gray-800">
-        <View onClick={() => Taro.navigateBack()} className="p-1 cursor-pointer">
+      <View className="flex items-center justify-between h-14 px-4 border-b border-gray-200 dark:border-gray-800">
+        <View onClick={() => Taro.navigateBack()} className="p-1 cursor-pointer active:scale-90 transition-transform duration-150">
           <ArrowLeft size={24} color={iconColor} />
         </View>
         <Text className="text-lg font-medium text-black dark:text-white">技能库</Text>
-        <View onClick={() => { setShowCreate(true); setEditingSkill(null) }} className="p-1 cursor-pointer">
-          <Plus size={24} color="#1890FF" />
+        <View onClick={() => { setShowCreate(true); setEditingSkill(null) }} className="p-1 cursor-pointer active:scale-90 transition-transform duration-150">
+          <Plus size={24} color="#22C55E" />
         </View>
       </View>
 
@@ -130,10 +130,10 @@ export default function SkillsPage() {
         {categories.map((cat) => (
           <View
             key={cat.id}
-            className={`px-3 py-1 rounded-full cursor-pointer ${
+            className={`px-3 py-1 rounded-full cursor-pointer active:scale-95 transition-transform duration-150 ${
               activeCategory === cat.id 
-                ? 'bg-blue-500' 
-                : 'bg-gray-100 dark:bg-gray-800'
+                ? 'bg-green-500' 
+                : 'bg-gray-100 dark:bg-gray-900'
             }`}
             onClick={() => setActiveCategory(cat.id)}
           >
@@ -148,13 +148,13 @@ export default function SkillsPage() {
       <ScrollView className="px-4" style={{ height: 'calc(100vh - 120px)' }} scrollY>
         {loading ? (
           <View className="flex items-center justify-center py-20">
-            <Text className="text-gray-500">加载中...</Text>
+            <Text className="text-gray-500 dark:text-gray-400">加载中...</Text>
           </View>
         ) : filteredSkills.length === 0 ? (
           <View className="flex flex-col items-center justify-center py-20">
             <Sparkles size={48} color={iconColorGray} />
-            <Text className="block text-gray-500 mt-4">暂无技能</Text>
-            <Text className="block text-gray-400 text-sm mt-1">点击右上角添加新技能</Text>
+            <Text className="block text-gray-500 dark:text-gray-400 mt-4">暂无技能</Text>
+            <Text className="block text-gray-400 dark:text-gray-500 text-sm mt-1">点击右上角添加新技能</Text>
           </View>
         ) : (
           filteredSkills.map((skill) => {
@@ -164,32 +164,38 @@ export default function SkillsPage() {
                 {editingSkill?.id === skill.id ? (
                   /* 编辑模式 */
                   <View>
-                    <Input
-                      value={formData.name}
-                      onInput={(e) => setFormData({ ...formData, name: e.detail.value })}
-                      placeholder="技能名称"
-                      className="bg-white dark:bg-gray-800 rounded-lg px-3 py-2 mb-2 text-sm"
-                    />
-                    <Input
-                      value={formData.description}
-                      onInput={(e) => setFormData({ ...formData, description: e.detail.value })}
-                      placeholder="技能描述"
-                      className="bg-white dark:bg-gray-800 rounded-lg px-3 py-2 mb-2 text-sm"
-                    />
-                    <Textarea
-                      value={formData.prompt}
-                      onInput={(e) => setFormData({ ...formData, prompt: e.detail.value })}
-                      placeholder="提示词"
-                      className="bg-white dark:bg-gray-800 rounded-lg px-3 py-2 mb-2 text-sm w-full"
-                      style={{ minHeight: '80px' }}
-                    />
+                    <View className="bg-white dark:bg-gray-800 rounded-xl px-3 py-2 mb-2">
+                      <Input
+                        value={formData.name}
+                        onInput={(e) => setFormData({ ...formData, name: e.detail.value })}
+                        placeholder="技能名称"
+                        className="w-full text-sm text-black dark:text-white"
+                      />
+                    </View>
+                    <View className="bg-white dark:bg-gray-800 rounded-xl px-3 py-2 mb-2">
+                      <Input
+                        value={formData.description}
+                        onInput={(e) => setFormData({ ...formData, description: e.detail.value })}
+                        placeholder="技能描述"
+                        className="w-full text-sm text-black dark:text-white"
+                      />
+                    </View>
+                    <View className="bg-white dark:bg-gray-800 rounded-xl px-3 py-2 mb-2">
+                      <Textarea
+                        value={formData.prompt}
+                        onInput={(e) => setFormData({ ...formData, prompt: e.detail.value })}
+                        placeholder="提示词"
+                        className="w-full text-sm text-black dark:text-white"
+                        style={{ minHeight: '80px' }}
+                      />
+                    </View>
                     <View className="flex gap-2 mb-2">
                       {iconOptions.map((icon) => {
                         const IconC = iconComponents[icon]
                         return (
                           <View
                             key={icon}
-                            className={`p-2 rounded-lg cursor-pointer ${formData.icon === icon ? 'bg-blue-500' : 'bg-white dark:bg-gray-800'}`}
+                            className={`p-2 rounded-xl cursor-pointer active:scale-90 transition-all duration-150 ${formData.icon === icon ? 'bg-green-500' : 'bg-white dark:bg-gray-800'}`}
                             onClick={() => setFormData({ ...formData, icon })}
                           >
                             <IconC size={20} color={formData.icon === icon ? '#fff' : iconColorGray} />
@@ -198,10 +204,10 @@ export default function SkillsPage() {
                       })}
                     </View>
                     <View className="flex justify-end gap-2">
-                      <View onClick={cancelEdit} className="px-3 py-1 rounded-lg bg-gray-200 dark:bg-gray-700 cursor-pointer">
+                      <View onClick={cancelEdit} className="px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 cursor-pointer active:scale-95 transition-transform duration-150">
                         <Text className="text-sm text-black dark:text-white">取消</Text>
                       </View>
-                      <View onClick={handleUpdate} className="px-3 py-1 rounded-lg bg-blue-500 cursor-pointer">
+                      <View onClick={handleUpdate} className="px-4 py-2 rounded-xl bg-green-500 cursor-pointer active:scale-95 transition-transform duration-150">
                         <Text className="text-sm text-white">保存</Text>
                       </View>
                     </View>
@@ -211,29 +217,32 @@ export default function SkillsPage() {
                   <View>
                     <View className="flex items-start justify-between">
                       <View className="flex items-center gap-3">
-                        <View className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20 flex items-center justify-center">
-                          <IconComponent size={20} color="#1890FF" />
+                        <View 
+                          className="w-10 h-10 rounded-xl flex items-center justify-center"
+                          style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}
+                        >
+                          <IconComponent size={20} color="#22C55E" />
                         </View>
                         <View className="flex-1">
                           <Text className="block text-base font-medium text-black dark:text-white">{skill.name}</Text>
-                          <Text className="block text-xs text-gray-500 mt-1">{skill.description || '暂无描述'}</Text>
+                          <Text className="block text-xs text-gray-500 dark:text-gray-400 mt-1">{skill.description || '暂无描述'}</Text>
                         </View>
                       </View>
                       <View className="flex gap-2">
-                        <View onClick={() => startEdit(skill)} className="p-1 cursor-pointer">
+                        <View onClick={() => startEdit(skill)} className="p-1 cursor-pointer active:scale-90 transition-transform duration-150">
                           <Pencil size={16} color={iconColorGray} />
                         </View>
-                        <View onClick={() => handleDelete(skill.id)} className="p-1 cursor-pointer">
-                          <Trash2 size={16} color="#FF4D4F" />
+                        <View onClick={() => handleDelete(skill.id)} className="p-1 cursor-pointer active:scale-90 transition-transform duration-150">
+                          <Trash2 size={16} color="#EF4444" />
                         </View>
                       </View>
                     </View>
-                    <View className="mt-3 p-2 bg-white dark:bg-gray-800 rounded-lg">
-                      <Text className="block text-xs text-gray-400">提示词</Text>
+                    <View className="mt-3 p-3 bg-white dark:bg-gray-800 rounded-xl">
+                      <Text className="block text-xs text-gray-400 dark:text-gray-500">提示词</Text>
                       <Text className="block text-sm text-gray-600 dark:text-gray-300 mt-1">{skill.prompt}</Text>
                     </View>
                     <View className="flex items-center justify-between mt-2">
-                      <Text className="text-xs text-gray-400">使用 {skill.usageCount} 次</Text>
+                      <Text className="text-xs text-gray-400 dark:text-gray-500">使用 {skill.usageCount} 次</Text>
                     </View>
                   </View>
                 )}
@@ -246,56 +255,69 @@ export default function SkillsPage() {
       {/* 创建技能弹窗 */}
       {showCreate && (
         <>
-          <View className="fixed inset-0 z-40 bg-black bg-opacity-50" onClick={() => setShowCreate(false)} />
-          <View className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl z-50 p-4 max-h-[80vh] overflow-y-auto">
+          <View 
+            className="fixed inset-0 z-40" 
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} 
+            onClick={() => setShowCreate(false)} 
+          />
+          <View 
+            className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black rounded-t-2xl z-50 p-4 max-h-[80vh] overflow-y-auto"
+            style={{ animation: 'slideUp 0.25s ease-out' }}
+          >
             <View className="flex items-center justify-between mb-4">
-              <Text className="text-lg font-medium text-black dark:text-white">创建技能</Text>
-              <View onClick={() => setShowCreate(false)} className="p-1 cursor-pointer">
-                <X size={20} color={iconColorGray} />
+              <Text className="text-base font-medium text-black dark:text-white">创建技能</Text>
+              <View onClick={() => setShowCreate(false)} className="p-1 cursor-pointer active:scale-90 transition-transform duration-150">
+                <X size={18} color={iconColorGray} />
               </View>
             </View>
             
             <View className="mb-3">
-              <Text className="block text-sm text-gray-500 mb-1">名称 *</Text>
-              <Input
-                value={formData.name}
-                onInput={(e) => setFormData({ ...formData, name: e.detail.value })}
-                placeholder="如：文章润色、代码优化"
-                className="bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 text-sm"
-              />
+              <Text className="block text-sm text-gray-500 dark:text-gray-400 mb-1">名称 *</Text>
+              <View className="bg-gray-50 dark:bg-gray-900 rounded-xl px-3 py-2">
+                <Input
+                  value={formData.name}
+                  onInput={(e) => setFormData({ ...formData, name: e.detail.value })}
+                  placeholder="如：文章润色、代码优化"
+                  className="w-full text-sm text-black dark:text-white"
+                />
+              </View>
             </View>
             
             <View className="mb-3">
-              <Text className="block text-sm text-gray-500 mb-1">描述</Text>
-              <Input
-                value={formData.description}
-                onInput={(e) => setFormData({ ...formData, description: e.detail.value })}
-                placeholder="简要描述这个技能的作用"
-                className="bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 text-sm"
-              />
+              <Text className="block text-sm text-gray-500 dark:text-gray-400 mb-1">描述</Text>
+              <View className="bg-gray-50 dark:bg-gray-900 rounded-xl px-3 py-2">
+                <Input
+                  value={formData.description}
+                  onInput={(e) => setFormData({ ...formData, description: e.detail.value })}
+                  placeholder="简要描述这个技能的作用"
+                  className="w-full text-sm text-black dark:text-white"
+                />
+              </View>
             </View>
             
             <View className="mb-3">
-              <Text className="block text-sm text-gray-500 mb-1">提示词 *</Text>
-              <Textarea
-                value={formData.prompt}
-                onInput={(e) => setFormData({ ...formData, prompt: e.detail.value })}
-                placeholder="输入AI需要遵循的指令..."
-                className="bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 text-sm w-full"
-                style={{ minHeight: '100px' }}
-              />
+              <Text className="block text-sm text-gray-500 dark:text-gray-400 mb-1">提示词 *</Text>
+              <View className="bg-gray-50 dark:bg-gray-900 rounded-xl px-3 py-2">
+                <Textarea
+                  value={formData.prompt}
+                  onInput={(e) => setFormData({ ...formData, prompt: e.detail.value })}
+                  placeholder="输入AI需要遵循的指令..."
+                  className="w-full text-sm text-black dark:text-white"
+                  style={{ minHeight: '100px' }}
+                />
+              </View>
             </View>
             
             <View className="mb-3">
-              <Text className="block text-sm text-gray-500 mb-1">分类</Text>
+              <Text className="block text-sm text-gray-500 dark:text-gray-400 mb-1">分类</Text>
               <View className="flex gap-2 flex-wrap">
                 {categories.filter(c => c.id !== 'all').map((cat) => (
                   <View
                     key={cat.id}
-                    className={`px-3 py-1 rounded-lg cursor-pointer ${
+                    className={`px-3 py-1 rounded-lg cursor-pointer active:scale-95 transition-transform duration-150 ${
                       formData.category === cat.id 
-                        ? 'bg-blue-500' 
-                        : 'bg-gray-50 dark:bg-gray-800'
+                        ? 'bg-green-500' 
+                        : 'bg-gray-50 dark:bg-gray-900'
                     }`}
                     onClick={() => setFormData({ ...formData, category: cat.id })}
                   >
@@ -308,17 +330,17 @@ export default function SkillsPage() {
             </View>
             
             <View className="mb-4">
-              <Text className="block text-sm text-gray-500 mb-1">图标</Text>
+              <Text className="block text-sm text-gray-500 dark:text-gray-400 mb-1">图标</Text>
               <View className="flex gap-2">
                 {iconOptions.map((icon) => {
                   const IconC = iconComponents[icon]
                   return (
                     <View
                       key={icon}
-                      className={`p-2 rounded-lg cursor-pointer ${
+                      className={`p-2 rounded-xl cursor-pointer active:scale-90 transition-transform duration-150 ${
                         formData.icon === icon 
-                          ? 'bg-blue-500' 
-                          : 'bg-gray-50 dark:bg-gray-800'
+                          ? 'bg-green-500' 
+                          : 'bg-gray-50 dark:bg-gray-900'
                       }`}
                       onClick={() => setFormData({ ...formData, icon })}
                     >
@@ -329,7 +351,7 @@ export default function SkillsPage() {
               </View>
             </View>
             
-            <View onClick={handleCreate} className="bg-blue-500 rounded-xl py-3 cursor-pointer">
+            <View onClick={handleCreate} className="bg-green-500 rounded-xl py-3 cursor-pointer active:scale-95 transition-transform duration-150">
               <Text className="block text-center text-white font-medium">创建技能</Text>
             </View>
           </View>

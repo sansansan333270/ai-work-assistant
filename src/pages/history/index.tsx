@@ -99,16 +99,16 @@ export default function History() {
     return `${date.getMonth() + 1}/${date.getDate()}`
   }
 
-  const iconColorGray = theme === 'dark' ? '#666666' : '#8C8C8C'
+  const iconColorGray = theme === 'dark' ? '#888888' : '#8C8C8C'
 
   return (
-    <View className={`min-h-screen bg-gray-50 dark:bg-black ${theme === 'dark' ? 'dark' : ''}`}>
+    <View className={`min-h-screen bg-white dark:bg-black ${theme === 'dark' ? 'dark' : ''}`}>
       {/* 顶部操作栏 */}
-      <View className="bg-white dark:bg-gray-900 px-4 py-3 flex flex-row items-center justify-between border-b border-gray-100 dark:border-gray-800">
-        <Text className="text-sm text-gray-500">{sessions.length} 个对话</Text>
+      <View className="bg-white dark:bg-black px-4 py-3 flex flex-row items-center justify-between border-b border-gray-200 dark:border-gray-800">
+        <Text className="text-sm text-gray-500 dark:text-gray-400">{sessions.length} 个对话</Text>
         {sessions.length > 0 && (
-          <View onClick={handleClearAll} className="cursor-pointer active:opacity-60">
-            <Text className="text-sm text-red-500">清空全部</Text>
+          <View onClick={handleClearAll} className="cursor-pointer active:scale-95 transition-transform duration-150">
+            <Text className="text-sm" style={{ color: '#EF4444' }}>清空全部</Text>
           </View>
         )}
       </View>
@@ -117,21 +117,21 @@ export default function History() {
       <ScrollView scrollY className="h-[calc(100vh-60px)]">
         {loading ? (
           <View className="flex flex-col items-center justify-center py-20">
-            <Text className="text-gray-400">加载中...</Text>
+            <Text className="text-gray-400 dark:text-gray-500">加载中...</Text>
           </View>
         ) : sessions.length === 0 ? (
           <View className="flex flex-col items-center justify-center py-20">
             <MessageCircle size={48} color={iconColorGray} />
-            <Text className="block text-gray-400 mt-4">暂无历史对话</Text>
-            <Text className="block text-gray-300 text-sm mt-2">开始新对话后会自动保存</Text>
+            <Text className="block text-gray-400 dark:text-gray-500 mt-4">暂无历史对话</Text>
+            <Text className="block text-gray-300 dark:text-gray-600 text-sm mt-2">开始新对话后会自动保存</Text>
           </View>
         ) : (
           <View className="p-4">
             {sessions.map((session, index) => (
               <View
                 key={session.id}
-                className="bg-white dark:bg-gray-900 rounded-xl p-4 mb-3 cursor-pointer active:opacity-80"
-                style={{ animation: `slideUp 0.3s ease-out ${index * 0.03}s both` }}
+                className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 mb-3 cursor-pointer active:scale-98 transition-transform duration-150"
+                style={{ animation: `slideUp 0.25s ease-out ${index * 0.03}s both` }}
                 onClick={() => handleSelectSession(session.id)}
               >
                 <View className="flex flex-row items-start justify-between">
@@ -141,15 +141,15 @@ export default function History() {
                     </Text>
                     <View className="flex flex-row items-center gap-2">
                       <Clock size={12} color={iconColorGray} />
-                      <Text className="text-xs text-gray-400">
+                      <Text className="text-xs text-gray-400 dark:text-gray-500">
                         {formatTime(session.lastMessageAt || session.updatedAt)}
                       </Text>
-                      <Text className="text-xs text-gray-400">·</Text>
-                      <Text className="text-xs text-gray-400">{session.messageCount} 条消息</Text>
+                      <Text className="text-xs text-gray-400 dark:text-gray-500">·</Text>
+                      <Text className="text-xs text-gray-400 dark:text-gray-500">{session.messageCount} 条消息</Text>
                     </View>
                   </View>
                   <View 
-                    className="p-2 cursor-pointer active:opacity-60"
+                    className="p-2 cursor-pointer active:scale-90 transition-transform duration-150"
                     onClick={(e) => handleDeleteSession(session.id, e)}
                   >
                     <Trash2 size={18} color={iconColorGray} />
@@ -162,9 +162,9 @@ export default function History() {
       </ScrollView>
 
       {/* 底部新建对话按钮 */}
-      <View className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
+      <View className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800">
         <View
-          className="flex flex-row items-center justify-center gap-2 py-3 rounded-xl bg-blue-500 cursor-pointer active:opacity-80"
+          className="flex flex-row items-center justify-center gap-2 py-3 rounded-xl bg-green-500 cursor-pointer active:scale-95 transition-transform duration-150"
           onClick={() => Taro.redirectTo({ url: '/pages/index/index' })}
         >
           <MessageCircle size={18} color="#FFFFFF" />

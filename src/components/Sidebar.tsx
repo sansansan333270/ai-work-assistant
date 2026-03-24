@@ -1,6 +1,7 @@
 import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { Database, Brain, Settings, X, Sparkles, History, SquarePlus } from 'lucide-react-taro'
+import { useThemeStore } from '@/store/theme'
 
 interface Props {
   onClose: () => void
@@ -16,6 +17,8 @@ const menuItems = [
 ]
 
 export function Sidebar({ onClose, onNewChat, onOpenHistory }: Props) {
+  const { theme } = useThemeStore()
+  
   const handleNavigate = (path: string) => {
     const pages = Taro.getCurrentPages()
     const currentPage = pages[pages.length - 1]
@@ -48,36 +51,41 @@ export function Sidebar({ onClose, onNewChat, onOpenHistory }: Props) {
     }
   }
 
-  const iconColor = '#8C8C8C'
+  const iconColor = theme === 'dark' ? '#888888' : '#8C8C8C'
 
   return (
     <>
       {/* 遮罩 */}
       <View 
-        className="fixed inset-0 bg-black bg-opacity-50 z-50"
+        className="fixed inset-0 z-50"
+        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', animation: 'fadeIn 0.2s ease-out' }}
         onClick={onClose}
       />
       
       {/* 侧边栏 */}
-      <View className="fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-gray-900 z-50 shadow-xl">
-        <View className="flex items-center justify-between p-4 border-b dark:border-gray-800">
+      <View 
+        className="fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-black z-50"
+        style={{ animation: 'slideRight 0.25s ease-out' }}
+      >
+        <View className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
           <Text className="text-lg font-medium text-black dark:text-white">工作助手</Text>
-          <View onClick={onClose} className="cursor-pointer active:opacity-60">
-            <X size={24} color={iconColor} />
+          <View onClick={onClose} className="p-1 cursor-pointer active:scale-90 transition-transform duration-150">
+            <X size={20} color={iconColor} />
           </View>
         </View>
         
         {/* 快捷操作 */}
-        <View className="p-4 border-b dark:border-gray-800">
+        <View className="p-4 border-b border-gray-200 dark:border-gray-800">
           <View 
-            className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20 cursor-pointer active:opacity-80 mb-2"
+            className="flex items-center gap-3 p-3 rounded-xl cursor-pointer active:scale-95 transition-transform duration-150 mb-2"
+            style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}
             onClick={handleNewChat}
           >
-            <SquarePlus size={20} color="#1890FF" />
-            <Text className="text-blue-500 font-medium">新建对话</Text>
+            <SquarePlus size={20} color="#22C55E" />
+            <Text className="font-medium" style={{ color: '#22C55E' }}>新建对话</Text>
           </View>
           <View 
-            className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 cursor-pointer active:opacity-80"
+            className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-900 cursor-pointer active:scale-95 transition-transform duration-150"
             onClick={handleOpenHistory}
           >
             <History size={20} color={iconColor} />
@@ -90,7 +98,7 @@ export function Sidebar({ onClose, onNewChat, onOpenHistory }: Props) {
           {menuItems.map((item, index) => (
             <View 
               key={index}
-              className="flex items-center gap-3 p-3 rounded-lg cursor-pointer active:opacity-60"
+              className="flex items-center gap-3 p-3 rounded-xl cursor-pointer active:scale-95 transition-transform duration-150"
               onClick={() => handleNavigate(item.path)}
             >
               <item.icon size={20} color={iconColor} />
