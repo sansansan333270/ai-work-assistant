@@ -7,5 +7,6 @@ import { UploadModule } from '../upload/upload.module'
   imports: [UploadModule],
   controllers: [AiController],
   providers: [AiService],
+  exports: [AiService],
 })
 export class AiModule {}

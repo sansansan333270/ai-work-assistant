@@ -7,9 +7,11 @@ import { MemoriesModule } from './modules/memories/memories.module'
 import { SkillsModule } from './modules/skills/skills.module'
 import { TtsModule } from './modules/tts/tts.module'
 import { UploadModule } from './modules/upload/upload.module'
+import { ImageModule } from './modules/image/image.module'
+import { DocumentModule } from './modules/document/document.module'
 
 @Module({
-  imports: [AiModule, NotesModule, MemoriesModule, SkillsModule, TtsModule, UploadModule],
+  imports: [AiModule, NotesModule, MemoriesModule, SkillsModule, TtsModule, UploadModule, ImageModule, DocumentModule],
   controllers: [AppController],
   providers: [AppService],
 })
